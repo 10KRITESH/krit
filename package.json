@@ -1,0 +1,16 @@
+{
+    "name": "krit",
+    "version": "0.1.0",
+    "description": "AI-powered terminal",
+    "main": "src/main/index.js",
+    "scripts": {
+        "start": "electron .",
+        "dev": "electron . --dev"
+    },
+    "dependencies": {
+        "dotenv": "^16.0.0"
+    },
+    "devDependencies": {
+        "electron": "^29.0.0"
+    }
+}
