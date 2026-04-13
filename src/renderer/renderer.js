@@ -51,6 +51,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusPlatform = document.getElementById('statusbar-platform')
     if (statusPlatform) statusPlatform.textContent = platformNames[platform] || platform
 
+    const statusShell = document.getElementById('statusbar-shell')
+    if (statusShell) statusShell.textContent = window.krit.shell
+
     // --- Color helpers ---
     const g = (code) => `\x1b[38;5;${code}m`
     const r = '\x1b[0m'
@@ -118,20 +121,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const handleAiConfirm = (key) => {
       if (key === 'y' || key === 'Y') {
+        const cmd = pendingCommand  // capture before clearing
         term.writeln('y')
         term.writeln('')
-        window.krit.ptyInput(pendingCommand + '\n')
+        window.krit.ptyInput('\x03')
+        setTimeout(() => {
+          window.krit.ptyInput(cmd + '\n')
+        }, 50)
       } else {
         term.writeln('n')
         term.writeln('')
         writeAiLine('cancelled.')
         term.writeln('')
+        window.krit.ptyInput('\x03')
       }
       aiMode = false
       pendingCommand = ''
     }
 
     term.onData(async (data) => {
+      // Escape sequences (terminal responses, arrow keys, etc) — always forward to PTY, never buffer
+      if (data.charCodeAt(0) === 27 && data.length > 1) {
+        window.krit.ptyInput(data)
+        return
+      }
+
       if (aiMode) {
         handleAiConfirm(data)
         return
@@ -149,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
           term.writeln('')
 
           if (!prompt) {
-            window.krit.ptyInput('\x03')  // Ctrl+C to clear fish buffer
+            window.krit.ptyInput('\x03')
             return
           }
 
@@ -164,6 +178,10 @@ document.addEventListener('DOMContentLoaded', () => {
               writeAiLine(`\x1b[38;2;74;85;104mrun it? (y/n)\x1b[0m`)
               pendingCommand = result.content
               aiMode = true
+            } else if (result.type === 'error') {
+              writeAiError(result.content)
+              term.writeln('')
+              window.krit.ptyInput('\x03')
             } else {
               term.writeln('')
               const words = result.content.split(' ')
@@ -177,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
               }
               if (line.trim()) writeAiLine(`\x1b[38;2;200;211;230m${line.trim()}\x1b[0m`)
               term.writeln('')
-              window.krit.ptyInput('\x03')  // Ctrl+C clears fish buffer, shows fresh prompt
+              window.krit.ptyInput('\x03')
             }
           } catch (err) {
             writeAiError(`failed: ${err.message}`)
@@ -186,15 +204,9 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
         } else {
+          // Normal shell command — just forward Enter to PTY
           window.krit.ptyInput('\r')
         }
-        return
-      }
-
-      // Backspace
-      if (code === 127) {
-        if (lineBuffer.length > 0) lineBuffer = lineBuffer.slice(0, -1)
-        window.krit.ptyInput(data)
         return
       }
 
@@ -207,10 +219,30 @@ document.addEventListener('DOMContentLoaded', () => {
         return
       }
 
+      // Check if we're currently in AI-prefix mode (line starts with -)
+      const wasAiPrefix = lineBuffer.startsWith('-')
+
+      // Backspace
+      if (code === 127) {
+        if (lineBuffer.length > 0) {
+          const wasInAiMode = lineBuffer.startsWith('-')
+          lineBuffer = lineBuffer.slice(0, -1)
+
+          if (wasInAiMode) {
+            // Was in AI mode — handle backspace visually only
+            term.write('\b \b')
+          } else {
+            // Normal mode — send to PTY
+            window.krit.ptyInput(data)
+          }
+        }
+        return
+      }
+
       // All other input — buffer it
       lineBuffer += data
 
-      // KEY FIX: don't forward to pty if line starts with "-" (with or without space yet)
+      // Don't forward to PTY if line starts with "-" (AI prefix)
       if (lineBuffer.startsWith('-')) {
         term.write(data)   // echo visually only
       } else {
