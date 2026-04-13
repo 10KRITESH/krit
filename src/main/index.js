@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 
 let mainWindow
@@ -10,14 +10,13 @@ const createWindow = () => {
         minWidth: 600,
         minHeight: 400,
         frame: false,
-        transparent: true,
-        backgroundColor: '#00000000',
+        transparent: false,
+        backgroundColor: '#0c1021',
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
             nodeIntegration: false
         },
-        titleBarStyle: 'hidden',
         show: false
     })
 
@@ -26,15 +25,17 @@ const createWindow = () => {
     mainWindow.once('ready-to-show', () => {
         mainWindow.show()
     })
-}
 
-const { ipcMain } = require('electron')
+    // Uncomment to debug:
+    // mainWindow.webContents.openDevTools()
+}
 
 ipcMain.on('window-minimize', () => mainWindow.minimize())
 ipcMain.on('window-maximize', () => {
     if (mainWindow.isMaximized()) mainWindow.unmaximize()
     else mainWindow.maximize()
 })
+ipcMain.on('window-close', () => mainWindow.close())
 
 app.whenReady().then(() => {
     createWindow()

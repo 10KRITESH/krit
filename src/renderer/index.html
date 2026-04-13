@@ -7,6 +7,8 @@
     <title>krit</title>
     <link rel="stylesheet" href="../../node_modules/xterm/css/xterm.css" />
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
         * {
             margin: 0;
             padding: 0;
@@ -17,33 +19,62 @@
         body {
             width: 100%;
             height: 100%;
-            background: transparent;
+            background: #0c1021;
             overflow: hidden;
-            font-family: monospace;
+            font-family: 'JetBrains Mono', monospace;
         }
 
         .window {
             width: 100vw;
             height: 100vh;
-            background: rgba(10, 14, 26, 0.55);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
-            border: 0.5px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
+            background: linear-gradient(170deg, #0f1528 0%, #0c1021 40%, #0a0d1a 100%);
+            border: 1px solid rgba(94, 202, 165, 0.08);
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            position: relative;
+        }
+
+        /* Subtle top glow accent */
+        .window::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg,
+                    transparent 0%,
+                    rgba(94, 202, 165, 0.3) 30%,
+                    rgba(55, 138, 221, 0.4) 50%,
+                    rgba(94, 202, 165, 0.3) 70%,
+                    transparent 100%);
+        }
+
+        /* Subtle ambient glow in corner */
+        .window::after {
+            content: '';
+            position: absolute;
+            top: -80px;
+            right: -80px;
+            width: 250px;
+            height: 250px;
+            background: radial-gradient(circle, rgba(55, 138, 221, 0.04) 0%, transparent 70%);
+            pointer-events: none;
         }
 
         .titlebar {
-            height: 36px;
+            height: 42px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 16px;
+            padding: 0 18px;
             -webkit-app-region: drag;
             flex-shrink: 0;
-            border-bottom: 0.5px solid rgba(255, 255, 255, 0.06);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            background: rgba(255, 255, 255, 0.01);
+            position: relative;
+            z-index: 10;
         }
 
         .titlebar-left {
@@ -54,43 +85,109 @@
         }
 
         .dot {
-            width: 12px;
-            height: 12px;
+            width: 13px;
+            height: 13px;
             border-radius: 50%;
             cursor: pointer;
             border: none;
             padding: 0;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .dot:hover {
+            transform: scale(1.15);
         }
 
         .dot-close {
             background: #E24B4A;
+            box-shadow: 0 0 6px rgba(226, 75, 74, 0.3);
+        }
+
+        .dot-close:hover {
+            box-shadow: 0 0 10px rgba(226, 75, 74, 0.5);
         }
 
         .dot-min {
             background: #EF9F27;
+            box-shadow: 0 0 6px rgba(239, 159, 39, 0.3);
+        }
+
+        .dot-min:hover {
+            box-shadow: 0 0 10px rgba(239, 159, 39, 0.5);
         }
 
         .dot-max {
             background: #5DCAA5;
+            box-shadow: 0 0 6px rgba(93, 202, 165, 0.3);
+        }
+
+        .dot-max:hover {
+            box-shadow: 0 0 10px rgba(93, 202, 165, 0.5);
+        }
+
+        .titlebar-center {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .titlebar-title {
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.3);
-            letter-spacing: 0.05em;
+            color: rgba(255, 255, 255, 0.25);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+
+        .titlebar-badge {
+            font-size: 9px;
+            color: rgba(93, 202, 165, 0.6);
+            background: rgba(93, 202, 165, 0.08);
+            padding: 2px 6px;
+            border-radius: 4px;
+            letter-spacing: 0.08em;
+            font-weight: 600;
         }
 
         .titlebar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .titlebar-clock {
             font-size: 11px;
             color: rgba(255, 255, 255, 0.2);
+            font-weight: 400;
+            letter-spacing: 0.04em;
+        }
+
+        .titlebar-status {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #5DCAA5;
+            box-shadow: 0 0 6px rgba(93, 202, 165, 0.4);
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
         }
 
         .terminal-container {
             flex: 1;
-            padding: 12px;
+            padding: 8px 14px 14px;
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            position: relative;
+            z-index: 5;
         }
 
         #terminal {
@@ -98,6 +195,7 @@
             overflow: hidden;
         }
 
+        /* xterm overrides for solid background */
         .xterm {
             height: 100%;
         }
@@ -109,6 +207,63 @@
         .xterm-screen {
             background: transparent !important;
         }
+
+        /* Custom scrollbar */
+        .xterm-viewport::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .xterm-viewport::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .xterm-viewport::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 3px;
+        }
+
+        .xterm-viewport::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Bottom status bar */
+        .statusbar {
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 18px;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            background: rgba(255, 255, 255, 0.01);
+            flex-shrink: 0;
+            position: relative;
+            z-index: 10;
+        }
+
+        .statusbar-left,
+        .statusbar-right {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .statusbar-item {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.2);
+            letter-spacing: 0.04em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .statusbar-item .icon {
+            font-size: 11px;
+            opacity: 0.6;
+        }
+
+        .statusbar-accent {
+            color: rgba(93, 202, 165, 0.5);
+        }
     </style>
 </head>
 
@@ -117,16 +272,33 @@
 
         <div class="titlebar">
             <div class="titlebar-left">
-                <button class="dot dot-close" onclick="window.krit.minimize()"></button>
+                <button class="dot dot-close" onclick="window.krit.close()"></button>
                 <button class="dot dot-min" onclick="window.krit.minimize()"></button>
                 <button class="dot dot-max" onclick="window.krit.maximize()"></button>
             </div>
-            <span class="titlebar-title">krit</span>
-            <span class="titlebar-right" id="clock"></span>
+            <div class="titlebar-center">
+                <span class="titlebar-title">krit</span>
+                <span class="titlebar-badge">v0.1</span>
+            </div>
+            <div class="titlebar-right">
+                <div class="titlebar-status"></div>
+                <span class="titlebar-clock" id="clock"></span>
+            </div>
         </div>
 
         <div class="terminal-container">
             <div id="terminal"></div>
+        </div>
+
+        <div class="statusbar">
+            <div class="statusbar-left">
+                <span class="statusbar-item"><span class="icon">⚡</span> <span class="statusbar-accent">ready</span></span>
+                <span class="statusbar-item">bash</span>
+            </div>
+            <div class="statusbar-right">
+                <span class="statusbar-item" id="statusbar-platform"></span>
+                <span class="statusbar-item">UTF-8</span>
+            </div>
         </div>
 
     </div>
