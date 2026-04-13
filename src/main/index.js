@@ -1,7 +1,10 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
+const ptyManager = require('./pty')
+const ai = require('../ai/controller')
 
 let mainWindow
+let currentCwd = process.env.HOME
 
 const createWindow = () => {
     mainWindow = new BrowserWindow({
@@ -24,11 +27,27 @@ const createWindow = () => {
 
     mainWindow.once('ready-to-show', () => {
         mainWindow.show()
-    })
 
-    // Uncomment to debug:
-    // mainWindow.webContents.openDevTools()
+        ptyManager.start(
+            (data) => {
+                // try to track cwd from shell output
+                mainWindow.webContents.send('pty-data', data)
+            },
+            80, 24
+        )
+    })
 }
+
+app.whenReady().then(() => {
+    createWindow()
+    app.on('activate', () => {
+        if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    })
+})
+
+app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit()
+})
 
 ipcMain.on('window-minimize', () => mainWindow.minimize())
 ipcMain.on('window-maximize', () => {
@@ -37,14 +56,15 @@ ipcMain.on('window-maximize', () => {
 })
 ipcMain.on('window-close', () => mainWindow.close())
 
-app.whenReady().then(() => {
-    createWindow()
+ipcMain.on('pty-input', (_, data) => ptyManager.write(data))
+ipcMain.on('pty-resize', (_, { cols, rows }) => ptyManager.resize(cols, rows))
 
-    app.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) createWindow()
-    })
+// update cwd whenever renderer tells us
+ipcMain.on('cwd-update', (_, cwd) => {
+    currentCwd = cwd
 })
 
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit()
+// handle AI query from renderer
+ipcMain.handle('ai-query', async (_, message) => {
+    return await ai.query(message, currentCwd)
 })

@@ -41,34 +41,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const fitAddon = new FitAddon.FitAddon()
     term.loadAddon(fitAddon)
-
     term.open(document.getElementById('terminal'))
     fitAddon.fit()
 
     // --- Platform info ---
     const platform = window.krit.platform
-    const platformNames = {
-      linux: 'Linux',
-      win32: 'Windows',
-      darwin: 'macOS'
-    }
+    const platformNames = { linux: 'Linux', win32: 'Windows', darwin: 'macOS' }
 
     const statusPlatform = document.getElementById('statusbar-platform')
-    if (statusPlatform) {
-      statusPlatform.textContent = platformNames[platform] || platform
-    }
+    if (statusPlatform) statusPlatform.textContent = platformNames[platform] || platform
 
     // --- Color helpers ---
     const g = (code) => `\x1b[38;5;${code}m`
     const r = '\x1b[0m'
     const bold = '\x1b[1m'
     const dim = '\x1b[2m'
-    const green = '\x1b[38;2;93;202;165m'
-    const blue = '\x1b[38;2;55;138;221m'
-    const cyan = '\x1b[38;2;86;201;219m'
     const muted = '\x1b[38;2;74;85;104m'
     const white = '\x1b[38;2;200;211;230m'
     const accent = '\x1b[38;2;93;202;165m'
+    const red = '\x1b[38;2;226;75;74m'
 
     // --- Welcome screen ---
     term.writeln('')
@@ -83,39 +74,148 @@ document.addEventListener('DOMContentLoaded', () => {
     term.writeln('')
     term.writeln(`   ${muted}◈${r}  ${dim}platform${r}    ${white}${platformNames[platform] || platform}${r}`)
     term.writeln(`   ${muted}◈${r}  ${dim}version${r}     ${white}v${window.krit.version}${r}`)
-    term.writeln(`   ${muted}◈${r}  ${dim}shell${r}       ${white}bash${r}`)
+    term.writeln(`   ${muted}◈${r}  ${dim}shell${r}       ${white}${window.krit.shell}${r}`)
     term.writeln(`   ${muted}◈${r}  ${dim}status${r}      ${accent}● connected${r}`)
+    term.writeln(`   ${muted}◈${r}  ${dim}ai${r}          ${accent}● ollama / qwen2.5:7b${r}`)
     term.writeln('')
     term.writeln(`   ${muted}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${r}`)
+    term.writeln('')
+    term.writeln(`   ${muted}${dim}prefix commands with ${r}${accent}- ${r}${dim}to use AI${r}`)
     term.writeln('')
 
     // --- Clock ---
     const clock = document.getElementById('clock')
     const tick = () => {
-      clock.textContent = new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit'
-      })
+      clock.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
     tick()
     setInterval(tick, 1000)
 
-    // --- PTY wiring ---
+    // --- PTY resize ---
     window.krit.ptyResize(term.cols, term.rows)
-
     window.addEventListener('resize', () => {
       fitAddon.fit()
       window.krit.ptyResize(term.cols, term.rows)
     })
 
-    // stream real shell output into xterm
+    // --- Shell output → xterm ---
     window.krit.onPtyData((data) => {
       term.write(data)
     })
 
-    // send keystrokes to real shell
-    term.onData((data) => {
-      window.krit.ptyInput(data)
+    // --- Input handling ---
+    let lineBuffer = ''
+    let aiMode = false
+    let pendingCommand = ''
+
+    const writeAiLine = (text) => {
+      term.writeln(`   ${accent}◈${r}  ${text}`)
+    }
+
+    const writeAiError = (text) => {
+      term.writeln(`   ${red}◈${r}  ${text}`)
+    }
+
+    const handleAiConfirm = (key) => {
+      if (key === 'y' || key === 'Y') {
+        term.writeln('y')
+        term.writeln('')
+        window.krit.ptyInput(pendingCommand + '\n')
+      } else {
+        term.writeln('n')
+        term.writeln('')
+        writeAiLine('cancelled.')
+        term.writeln('')
+      }
+      aiMode = false
+      pendingCommand = ''
+    }
+
+    term.onData(async (data) => {
+      if (aiMode) {
+        handleAiConfirm(data)
+        return
+      }
+
+      const code = data.charCodeAt(0)
+
+      // Enter
+      if (data === '\r') {
+        const input = lineBuffer.trim()
+        lineBuffer = ''
+
+        if (input.startsWith('- ')) {
+          const prompt = input.slice(2).trim()
+          term.writeln('')
+
+          if (!prompt) {
+            window.krit.ptyInput('\x03')  // Ctrl+C to clear fish buffer
+            return
+          }
+
+          writeAiLine(`\x1b[2mthinking...\x1b[0m`)
+
+          try {
+            const result = await window.krit.aiQuery(prompt)
+
+            if (result.type === 'command') {
+              term.writeln('')
+              writeAiLine(`\x1b[38;2;200;211;230msuggested:\x1b[0m  \x1b[38;2;93;202;165m${result.content}\x1b[0m`)
+              writeAiLine(`\x1b[38;2;74;85;104mrun it? (y/n)\x1b[0m`)
+              pendingCommand = result.content
+              aiMode = true
+            } else {
+              term.writeln('')
+              const words = result.content.split(' ')
+              let line = ''
+              for (const word of words) {
+                if ((line + word).length > 70) {
+                  writeAiLine(`\x1b[38;2;200;211;230m${line.trim()}\x1b[0m`)
+                  line = ''
+                }
+                line += word + ' '
+              }
+              if (line.trim()) writeAiLine(`\x1b[38;2;200;211;230m${line.trim()}\x1b[0m`)
+              term.writeln('')
+              window.krit.ptyInput('\x03')  // Ctrl+C clears fish buffer, shows fresh prompt
+            }
+          } catch (err) {
+            writeAiError(`failed: ${err.message}`)
+            term.writeln('')
+            window.krit.ptyInput('\x03')
+          }
+
+        } else {
+          window.krit.ptyInput('\r')
+        }
+        return
+      }
+
+      // Backspace
+      if (code === 127) {
+        if (lineBuffer.length > 0) lineBuffer = lineBuffer.slice(0, -1)
+        window.krit.ptyInput(data)
+        return
+      }
+
+      // Ctrl+C
+      if (data === '\x03') {
+        lineBuffer = ''
+        aiMode = false
+        pendingCommand = ''
+        window.krit.ptyInput(data)
+        return
+      }
+
+      // All other input — buffer it
+      lineBuffer += data
+
+      // KEY FIX: don't forward to pty if line starts with "-" (with or without space yet)
+      if (lineBuffer.startsWith('-')) {
+        term.write(data)   // echo visually only
+      } else {
+        window.krit.ptyInput(data)  // normal — send to shell
+      }
     })
 
   } catch (err) {
