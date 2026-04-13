@@ -1,4 +1,3 @@
-// Wait for DOM to be ready
 document.addEventListener('DOMContentLoaded', () => {
   try {
     const term = new Terminal({
@@ -40,14 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
       tabStopWidth: 4,
     })
 
-    // FitAddon is exported as FitAddon.FitAddon via UMD
     const fitAddon = new FitAddon.FitAddon()
     term.loadAddon(fitAddon)
 
     term.open(document.getElementById('terminal'))
     fitAddon.fit()
-
-    window.addEventListener('resize', () => fitAddon.fit())
 
     // --- Platform info ---
     const platform = window.krit.platform
@@ -57,7 +53,6 @@ document.addEventListener('DOMContentLoaded', () => {
       darwin: 'macOS'
     }
 
-    // Update statusbar platform
     const statusPlatform = document.getElementById('statusbar-platform')
     if (statusPlatform) {
       statusPlatform.textContent = platformNames[platform] || platform
@@ -93,58 +88,11 @@ document.addEventListener('DOMContentLoaded', () => {
     term.writeln('')
     term.writeln(`   ${muted}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${r}`)
     term.writeln('')
-    term.writeln(`   ${muted}${dim}Type commands below. Shell integration coming in Phase 3.${r}`)
-    term.writeln('')
-
-    // --- Prompt ---
-    const writePrompt = () => {
-      const now = new Date()
-      const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      term.write(`   ${muted}${time}${r}  ${accent}❯${r} `)
-    }
-
-    writePrompt()
-
-    // --- Input handling ---
-    let currentLine = ''
-
-    term.onKey(({ key, domEvent }) => {
-      const code = domEvent.keyCode
-
-      if (code === 13) {
-        // Enter
-        if (currentLine.trim()) {
-          term.writeln('')
-          term.writeln(`   ${muted}${dim}» command not yet connected to shell${r}`)
-        }
-        term.writeln('')
-        currentLine = ''
-        writePrompt()
-        return
-      }
-
-      if (code === 8) {
-        // Backspace
-        if (currentLine.length > 0) {
-          currentLine = currentLine.slice(0, -1)
-          term.write('\b \b')
-        }
-        return
-      }
-
-      // Ignore control keys
-      if (domEvent.ctrlKey || domEvent.altKey || domEvent.metaKey) return
-      if (key.length === 1 && key.charCodeAt(0) >= 32) {
-        currentLine += key
-        term.write(key)
-      }
-    })
 
     // --- Clock ---
     const clock = document.getElementById('clock')
     const tick = () => {
-      const now = new Date()
-      clock.textContent = now.toLocaleTimeString([], {
+      clock.textContent = new Date().toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit'
       })
@@ -152,8 +100,25 @@ document.addEventListener('DOMContentLoaded', () => {
     tick()
     setInterval(tick, 1000)
 
+    // --- PTY wiring ---
+    window.krit.ptyResize(term.cols, term.rows)
+
+    window.addEventListener('resize', () => {
+      fitAddon.fit()
+      window.krit.ptyResize(term.cols, term.rows)
+    })
+
+    // stream real shell output into xterm
+    window.krit.onPtyData((data) => {
+      term.write(data)
+    })
+
+    // send keystrokes to real shell
+    term.onData((data) => {
+      window.krit.ptyInput(data)
+    })
+
   } catch (err) {
-    // Fallback: show error on screen if terminal fails
     document.getElementById('terminal').innerHTML =
       `<pre style="color:#E24B4A;padding:20px;font-size:13px;">Terminal init error:\n${err.message}\n${err.stack}</pre>`
   }
