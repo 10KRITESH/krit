@@ -208,6 +208,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    // Helper: checks if input looks like an AI query (dash + space prefix)
+    const isAiPrefix = (buf) => buf.startsWith('-') || buf.startsWith('- ')
+
     term.onData((data) => {
       // Escape sequences (arrow keys, etc) — always forward to PTY
       if (data.charCodeAt(0) === 27 && data.length > 1) {
@@ -241,8 +244,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return
       }
 
+      // Ctrl+U (clear line) — reset lineBuffer
+      if (data === '\x15') {
+        lineBuffer = ''
+        window.krit.ptyInput(data)
+        return
+      }
+
       // Enter
-      if (data === '\r') {
+      if (data === '\r' || data === '\n') {
         const input = lineBuffer.trim()
         lineBuffer = ''
 
@@ -256,6 +266,10 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           processAiQuery(prompt)
+        } else if (input === '-') {
+          // Just a lone dash, treat as empty AI query
+          term.writeln('')
+          resetPromptClean()
         } else {
           // Normal command — forward Enter to PTY
           window.krit.ptyInput('\r')
@@ -266,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Backspace
       if (code === 127) {
         if (lineBuffer.length > 0) {
-          const wasInAiPrefix = lineBuffer.startsWith('-')
+          const wasInAiPrefix = isAiPrefix(lineBuffer)
           lineBuffer = lineBuffer.slice(0, -1)
 
           if (wasInAiPrefix) {
@@ -280,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Tab — only forward to PTY if not in AI prefix mode
       if (data === '\t') {
-        if (!lineBuffer.startsWith('-')) {
+        if (!isAiPrefix(lineBuffer)) {
           window.krit.ptyInput(data)
         }
         return
@@ -289,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // All other printable input
       lineBuffer += data
 
-      if (lineBuffer.startsWith('-')) {
+      if (isAiPrefix(lineBuffer)) {
         // AI prefix mode — echo locally only, don't send to shell
         term.write(data)
       } else {
