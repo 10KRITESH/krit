@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>krit</title>
-  <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css" />
+  <link rel="stylesheet" href="../../node_modules/xterm/css/xterm.css" />
   <style>
     * {
       margin: 0;
@@ -22,9 +22,7 @@
     .window {
       width: 100vw;
       height: 100vh;
-      background: rgba(8, 10, 18, 0.78);
-      backdrop-filter: blur(24px) saturate(180%);
-      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      background: #080a12;
       border: 0.5px solid rgba(255, 255, 255, 0.07);
       border-radius: 10px;
       display: flex;
@@ -165,8 +163,8 @@
     </div>
   </div>
 
-  <script src="../../node_modules/@xterm/xterm/lib/xterm.js"></script>
-  <script src="../../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+  <script src="../../node_modules/xterm/lib/xterm.js"></script>
+  <script src="../../node_modules/xterm-addon-fit/lib/xterm-addon-fit.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

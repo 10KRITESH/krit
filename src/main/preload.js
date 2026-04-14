@@ -4,6 +4,15 @@ contextBridge.exposeInMainWorld('krit', {
     platform: process.platform,
     version: '0.1.0',
     aiModel: process.env.GROQ_MODEL || process.env.OLLAMA_MODEL || 'groq',
+    os: {
+        uptime: require('os').uptime(),
+        totalmem: require('os').totalmem(),
+        freemem: require('os').freemem(),
+        username: require('os').userInfo().username,
+        hostname: require('os').hostname(),
+        release: require('os').release(),
+        shell: process.env.SHELL || 'bash'
+    },
     minimize:    () => ipcRenderer.send('window-minimize'),
     maximize:    () => ipcRenderer.send('window-maximize'),
     closeWindow: () => ipcRenderer.send('window-close'),

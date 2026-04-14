@@ -67,16 +67,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const red = '\x1b[38;2;226;75;74m'
 
     // startup banner
+    const { os } = window.krit
+    const up = os.uptime
+    const uptimeStr = `${Math.floor(up / 3600)} hours, ${Math.floor((up % 3600) / 60)} minutes`
+    const memStr = `${((os.totalmem - os.freemem) / (1024**3)).toFixed(2)} GiB / ${(os.totalmem / (1024**3)).toFixed(2)} GiB`
+
+    const padBox = (name, val) => {
+      const left = `   ${name}`.padEnd(12, ' ')
+      const right = String(val).slice(0, 22).padStart(23, ' ')
+      return `     │${left}${right}│`
+    }
+
     term.writeln('')
-    term.writeln('  \x1b[2m◆\x1b[0m  \x1b[1mkrit\x1b[0m  \x1b[2mv0.1.0\x1b[0m')
-    term.writeln('  \x1b[2m─────────────────────────────\x1b[0m')
+    term.writeln(`     __        _ __ `)
+    term.writeln(`    / /__  ___(_) /_`)
+    term.writeln(`   / //_/ / __/ / __/`)
+    term.writeln(`  / ,<   / / / / /_ `)
+    term.writeln(` /_/|_| /_/ /_/\__/ `)
     term.writeln('')
-    term.writeln(`  \x1b[2mplatform\x1b[0m   ${platformNames[platform] || platform}`)
-    term.writeln(`  \x1b[2mshell\x1b[0m      bash`)
-    term.writeln(`  \x1b[2mmodel\x1b[0m      ${window.krit.aiModel || 'groq'}`)
-    term.writeln(`  \x1b[2mprefix\x1b[0m     \x1b[2m-\x1b[0m  for AI  ·  \x1b[2mexit\x1b[0m  to quit`)
-    term.writeln('')
-    term.writeln('  \x1b[2m─────────────────────────────\x1b[0m')
+    term.writeln('     ╭───────────────────────────────────╮')
+    term.writeln(padBox('kernel', os.release))
+    term.writeln(padBox('uptime', uptimeStr))
+    term.writeln(padBox('shell', os.shell.split('/').pop()))
+    term.writeln(padBox('mem', memStr))
+    term.writeln(padBox('pkgs', 'unknown'))
+    term.writeln(padBox('user', os.username))
+    term.writeln(padBox('hname', os.hostname))
+    term.writeln(padBox('distro', platformNames[platform] || platform))
+    term.writeln('     ╰───────────────────────────────────╯')
     term.writeln('')
 
     // --- Clock ---
