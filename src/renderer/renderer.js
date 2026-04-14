@@ -177,6 +177,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const handleAiConfirm = (key) => {
+      if (aiMode === 'danger') {
+        // danger mode requires full "yes"
+        lineBuffer += key
+
+        if (key === '\r' || key === '\n') {
+          const answer = lineBuffer.trim().toLowerCase()
+          lineBuffer = ''
+
+          if (answer === 'yes') {
+            const cmd = pendingCommand
+            term.writeln('')
+            aiMode = false
+            pendingCommand = ''
+            // Capture the command output for AI context
+            startOutputCapture(cmd)
+            window.krit.ptyInput(cmd + '\n')
+          } else {
+            term.writeln('')
+            writeAiLine(`${dim}cancelled.${r}`)
+            term.writeln('')
+            aiMode = false
+            pendingCommand = ''
+            resetPromptClean()
+          }
+        } else if (key.charCodeAt(0) !== 127) {
+          term.write(key)
+        } else {
+          // backspace in danger mode
+          if (lineBuffer.length > 0) {
+            lineBuffer = lineBuffer.slice(0, -1)
+            term.write('\b \b')
+          }
+        }
+        return
+      }
+
+      // normal y/n for safe and warning
       if (key === 'y' || key === 'Y') {
         const cmd = pendingCommand
         term.writeln('y')
@@ -185,7 +222,6 @@ document.addEventListener('DOMContentLoaded', () => {
         pendingCommand = ''
         // Capture the command output for AI context
         startOutputCapture(cmd)
-        // Send the command directly to PTY
         window.krit.ptyInput(cmd + '\n')
       } else {
         term.writeln('n')
@@ -203,17 +239,46 @@ document.addEventListener('DOMContentLoaded', () => {
       writeAiLine(`${dim}thinking...${r}`)
 
       try {
-        console.log('[krit-ai] Sending query:', prompt)
         const result = await window.krit.aiQuery(prompt)
-        console.log('[krit-ai] Got result:', JSON.stringify(result))
 
         if (result.type === 'command') {
+          const level = result.safetyLevel || 'safe'
+          const warning = result.safetyWarning || ''
+
           term.writeln('')
-          writeAiLine(`${white}suggested:${r}  ${accent}${result.content}${r}`)
-          writeAiLine(`${muted}run it? (y/n)${r}`)
-          pendingCommand = result.content
-          aiMode = true
+
+          // draw the right card based on safety level
+          if (level === 'danger') {
+            term.writeln(`   \x1b[38;2;226;75;74m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m`)
+            term.writeln(`   \x1b[38;2;226;75;74m⚠  DANGEROUS COMMAND\x1b[0m`)
+            term.writeln(`   \x1b[38;2;226;75;74m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m`)
+            term.writeln('')
+            writeAiLine(`${red}command:${r}   ${accent}${result.content}${r}`)
+            if (warning) writeAiLine(`${red}warning:${r}   ${white}${warning}${r}`)
+            term.writeln('')
+            writeAiLine(`${red}type "yes" to confirm or "n" to cancel:${r}`)
+            pendingCommand = result.content
+            aiMode = 'danger'
+          } else if (level === 'warning') {
+            term.writeln(`   \x1b[38;2;239;159;39m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m`)
+            term.writeln(`   \x1b[38;2;239;159;39m⚡  CAUTION\x1b[0m`)
+            term.writeln(`   \x1b[38;2;239;159;39m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m`)
+            term.writeln('')
+            writeAiLine(`${g(214)}command:${r}   ${accent}${result.content}${r}`)
+            if (warning) writeAiLine(`${g(214)}note:${r}      ${white}${warning}${r}`)
+            term.writeln('')
+            writeAiLine(`${muted}run it? (y/n)${r}`)
+            pendingCommand = result.content
+            aiMode = true
+          } else {
+            writeAiLine(`${white}suggested:${r}  ${accent}${result.content}${r}`)
+            writeAiLine(`${muted}run it? (y/n)${r}`)
+            pendingCommand = result.content
+            aiMode = true
+          }
+
           aiProcessing = false
+
         } else if (result.type === 'error') {
           writeAiError(result.content)
           term.writeln('')
@@ -236,7 +301,6 @@ document.addEventListener('DOMContentLoaded', () => {
           resetPromptClean()
         }
       } catch (err) {
-        console.error('[krit-ai] Error:', err)
         writeAiError(`failed: ${err.message}`)
         term.writeln('')
         aiProcessing = false

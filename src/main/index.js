@@ -3,6 +3,7 @@ const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 const ptyManager = require('./pty')
 const ai = require('../ai/controller')
+const safety = require('../ai/safety')
 
 // Fix GPU/VSync crashes on Wayland (CachyOS, etc.)
 app.commandLine.appendSwitch('ozone-platform-hint', 'auto')
@@ -74,7 +75,16 @@ ipcMain.on('cwd-update', (_, cwd) => {
 
 // handle AI query from renderer
 ipcMain.handle('ai-query', async (_, message) => {
-    return await ai.query(message, currentCwd)
+    const result = await ai.query(message, currentCwd)
+
+    // if AI returned a command, classify it before sending back
+    if (result.type === 'command') {
+        const level = safety.classify(result.content)
+        const warning = safety.getWarningMessage(result.content, level)
+        return { ...result, safetyLevel: level, safetyWarning: warning }
+    }
+
+    return result
 })
 
 // capture command output for AI session context
