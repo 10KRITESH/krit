@@ -108,10 +108,44 @@ document.addEventListener('DOMContentLoaded', () => {
     let pendingCommand = ''
     let suppressPty = false  // suppress PTY output during AI prompt reset
 
+    // --- Output capture for AI session context ---
+    let outputBuffer = ''
+    let outputTimer = null
+    let captureCommand = ''   // the command whose output we're capturing
+    let capturing = false     // whether we're currently capturing output
+
+    const startOutputCapture = (cmd) => {
+      captureCommand = cmd
+      outputBuffer = ''
+      capturing = true
+      if (outputTimer) clearTimeout(outputTimer)
+      // After 800ms of no new output, assume command is done
+      outputTimer = setTimeout(flushOutputCapture, 800)
+    }
+
+    const flushOutputCapture = () => {
+      if (capturing && captureCommand && outputBuffer) {
+        window.krit.sendCommandOutput(captureCommand, outputBuffer)
+      }
+      capturing = false
+      captureCommand = ''
+      outputBuffer = ''
+      if (outputTimer) clearTimeout(outputTimer)
+      outputTimer = null
+    }
+
     // --- Shell output → xterm ---
     window.krit.onPtyData((data) => {
       if (suppressPty) return
       term.write(data)
+
+      // Collect output for AI context
+      if (capturing) {
+        outputBuffer += data
+        // Reset the timer on each chunk — wait for output to settle
+        if (outputTimer) clearTimeout(outputTimer)
+        outputTimer = setTimeout(flushOutputCapture, 800)
+      }
     })
 
     // --- Input handling ---
@@ -149,6 +183,8 @@ document.addEventListener('DOMContentLoaded', () => {
         term.writeln('')
         aiMode = false
         pendingCommand = ''
+        // Capture the command output for AI context
+        startOutputCapture(cmd)
         // Send the command directly to PTY
         window.krit.ptyInput(cmd + '\n')
       } else {
@@ -208,8 +244,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Helper: checks if input looks like an AI query (dash + space prefix)
-    const isAiPrefix = (buf) => buf.startsWith('-') || buf.startsWith('- ')
+    // Helper: checks if input looks like an AI query (dash prefix, ignoring leading whitespace)
+    const isAiPrefix = (buf) => buf.trimStart().startsWith('-')
 
     term.onData((data) => {
       // Escape sequences (arrow keys, etc) — always forward to PTY
@@ -251,9 +287,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return
       }
 
-      // Enter
-      if (data === '\r' || data === '\n') {
-        const input = lineBuffer.trim()
+      // Enter or newline (handles single keypress, pasted strings, and fast IPC batches)
+      if (data.includes('\r') || data.includes('\n')) {
+        // Capture everything before the newline into the buffer
+        const parts = data.split(/[\r\n]+/)
+        lineBuffer += parts[0]
+        
+        // Use trimStart so any accidental leading spaces don't bypass the check
+        const input = lineBuffer.trimStart()
         lineBuffer = ''
 
         if (input.startsWith('- ')) {
@@ -271,8 +312,11 @@ document.addEventListener('DOMContentLoaded', () => {
           term.writeln('')
           resetPromptClean()
         } else {
-          // Normal command — forward Enter to PTY
-          window.krit.ptyInput('\r')
+          // Normal command — forward to PTY
+          if (input.trim()) {
+            startOutputCapture(input.trim())
+          }
+          window.krit.ptyInput(data)
         }
         return
       }

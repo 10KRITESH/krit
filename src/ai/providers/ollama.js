@@ -41,9 +41,9 @@ const ollamaRequest = (payload) => {
             reject(new Error(`Cannot connect to Ollama at ${OLLAMA_HOST}: ${err.message}`))
         })
 
-        req.setTimeout(30000, () => {
+        req.setTimeout(120000, () => {
             req.destroy()
-            reject(new Error('Ollama request timed out (30s)'))
+            reject(new Error('Ollama request timed out (120s)'))
         })
 
         req.write(postData)
@@ -53,16 +53,22 @@ const ollamaRequest = (payload) => {
 
 /**
  * Ask the AI a question and return { type, content }.
+ * @param {string} userMessage - The current user message
+ * @param {string} cwd - Current working directory
+ * @param {Array} history - Full session history array of { role, content } objects
  */
-const ask = async (userMessage, cwd) => {
+const ask = async (userMessage, cwd, history = []) => {
     const systemPrompt = buildSystemPrompt(cwd || process.env.HOME)
+
+    // Build messages: system prompt + full session history
+    const messages = [
+        { role: 'system', content: systemPrompt },
+        ...history,
+    ]
 
     const response = await ollamaRequest({
         model: MODEL,
-        messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userMessage },
-        ],
+        messages,
         stream: false,
         options: {
             temperature: 0.3,
@@ -78,6 +84,10 @@ const ask = async (userMessage, cwd) => {
         if (cleaned.startsWith('```')) {
             cleaned = cleaned.replace(/^```(?:json)?\s*/, '').replace(/```\s*$/, '').trim()
         }
+
+        // Fix common LLM JSON escaping issues: unescaped backslashes in shell commands
+        // This converts \ into \\ so JSON.parse won't crash on paths like 'SEM\ VI*'
+        cleaned = cleaned.replace(/\\(?!["\\/bfnrt])/g, '\\\\')
 
         const parsed = JSON.parse(cleaned)
 

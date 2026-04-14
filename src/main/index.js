@@ -75,3 +75,13 @@ ipcMain.on('cwd-update', (_, cwd) => {
 ipcMain.handle('ai-query', async (_, message) => {
     return await ai.query(message, currentCwd)
 })
+
+// capture command output for AI session context
+ipcMain.on('command-output', (_, { command, output }) => {
+    ai.addOutput(command, output)
+})
+
+// reset AI session history
+ipcMain.on('session-reset', () => {
+    ai.reset()
+})

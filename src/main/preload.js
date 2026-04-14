@@ -15,4 +15,6 @@ contextBridge.exposeInMainWorld('krit', {
 
     cwdUpdate: (cwd) => ipcRenderer.send('cwd-update', cwd),
     aiQuery: (message) => ipcRenderer.invoke('ai-query', message),
+    sendCommandOutput: (command, output) => ipcRenderer.send('command-output', { command, output }),
+    sessionReset: () => ipcRenderer.send('session-reset'),
 })
