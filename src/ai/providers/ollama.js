@@ -78,24 +78,28 @@ const ask = async (userMessage, cwd, history = []) => {
     const raw = response?.message?.content || ''
 
     // Try to parse the JSON response from the model
+    let cleaned = raw.trim()
+    if (cleaned.startsWith('```')) {
+        cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
+    }
+
     try {
-        // Strip markdown code fences if the model wraps the JSON
-        let cleaned = raw.trim()
-        if (cleaned.startsWith('```')) {
-            cleaned = cleaned.replace(/^```(?:json)?\s*/, '').replace(/```\s*$/, '').trim()
-        }
-
-        // Fix common LLM JSON escaping issues: unescaped backslashes in shell commands
-        // This converts \ into \\ so JSON.parse won't crash on paths like 'SEM\ VI*'
-        cleaned = cleaned.replace(/\\(?!["\\/bfnrt])/g, '\\\\')
-
         const parsed = JSON.parse(cleaned)
-
         if (parsed.type && parsed.content) {
             return { type: parsed.type, content: parsed.content }
         }
     } catch {
-        // Model didn't return valid JSON — treat as chat
+        // Fallback for badly escaped backslashes (e.g. SEM\ VI) and raw newlines
+        try {
+            let fixed = cleaned.replace(/(?<!\\)\\(?!["\\/bfnrt])/g, '\\\\')
+            fixed = fixed.replace(/\n/g, '\\n')
+            const parsed = JSON.parse(fixed)
+            if (parsed.type && parsed.content) {
+                return { type: parsed.type, content: parsed.content }
+            }
+        } catch {
+            // Proceed to chat fallback
+        }
     }
 
     // Fallback: return raw text as chat
