@@ -5,9 +5,9 @@ const pty = require('node-pty')
 // prompt redraws) breaks our AI input interception completely.
 const shell = process.platform === 'win32' ? 'powershell.exe' : '/bin/bash'
 
-// Custom prompt that matches the krit aesthetic
-// ◄ \W ● (green cwd, muted symbols)
-const KRIT_PS1 = '\\[\\e[38;2;74;85;104m\\]◄\\[\\e[0m\\] \\[\\e[38;2;93;202;165m\\]\\W\\[\\e[0m\\] \\[\\e[38;2;74;85;104m\\]●\\[\\e[0m\\] '
+// Custom prompt that matches the krit Phase 7 aesthetic
+// ◄ ◎ (muted symbols, no inline cwd)
+const KRIT_PS1 = '\\n  \\[\\e[2m\\]◄\\[\\e[0m\\] \\[\\e[2m\\]◎\\[\\e[0m\\] '
 
 let ptyProcess = null
 

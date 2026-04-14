@@ -3,40 +3,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const term = new Terminal({
       cursorBlink: true,
       cursorStyle: 'bar',
-      cursorWidth: 2,
-      fontSize: 13,
-      fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", monospace',
+      cursorWidth: 1.5,
+      fontSize: 12,
+      fontFamily: '"JetBrains Mono", "JetBrains Mono NF", monospace',
       fontWeight: '400',
       fontWeightBold: '600',
       lineHeight: 1.5,
-      letterSpacing: 0.5,
+      letterSpacing: 0,
       theme: {
-        background: '#0c1021',
-        foreground: '#c8d3e6',
-        cursor: '#5DCAA5',
-        cursorAccent: '#0c1021',
-        selectionBackground: 'rgba(93, 202, 165, 0.18)',
-        selectionForeground: '#ffffff',
-        black: '#1a1d2e',
-        red: '#E24B4A',
-        green: '#5DCAA5',
-        yellow: '#EF9F27',
-        blue: '#378ADD',
-        magenta: '#AFA9EC',
-        cyan: '#56C9DB',
-        white: '#c8d3e6',
-        brightBlack: '#4a5568',
-        brightRed: '#ff6b6b',
-        brightGreen: '#69dbb1',
-        brightYellow: '#ffc857',
-        brightBlue: '#5fa8e3',
-        brightMagenta: '#c4b5fd',
-        brightCyan: '#67e8f9',
-        brightWhite: '#f1f5f9',
+        background:          'transparent',
+        foreground:          '#c8cdd8',
+        cursor:              '#c8cdd8',
+        cursorAccent:        '#080a12',
+        selectionBackground: 'rgba(200, 205, 216, 0.12)',
+
+        black:         '#1a1d26',
+        red:           '#e06c75',
+        green:         '#8fbf7f',
+        yellow:        '#d4a96a',
+        blue:          '#6a9fd4',
+        magenta:       '#b48ead',
+        cyan:          '#7fbfbf',
+        white:         '#c8cdd8',
+
+        brightBlack:   '#3d4255',
+        brightRed:     '#e06c75',
+        brightGreen:   '#8fbf7f',
+        brightYellow:  '#d4a96a',
+        brightBlue:    '#6a9fd4',
+        brightMagenta: '#b48ead',
+        brightCyan:    '#7fbfbf',
+        brightWhite:   '#eef0f4',
       },
-      allowTransparency: false,
-      scrollback: 5000,
+      allowTransparency: true,
+      scrollback: 10000,
       tabStopWidth: 4,
+      drawBoldTextInBrightColors: false,
     })
 
     const fitAddon = new FitAddon.FitAddon()
@@ -64,26 +66,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const accent = '\x1b[38;2;93;202;165m'
     const red = '\x1b[38;2;226;75;74m'
 
-    // --- Welcome screen ---
+    // startup banner
     term.writeln('')
-    term.writeln(`   ${accent}${bold}██╗  ██╗${r}${g(243)}██████╗ ${r}${g(241)}██╗${r}${g(239)}████████╗${r}`)
-    term.writeln(`   ${accent}${bold}██║ ██╔╝${r}${g(243)}██╔══██╗${r}${g(241)}██║${r}${g(239)}╚══██╔══╝${r}`)
-    term.writeln(`   ${accent}${bold}█████╔╝ ${r}${g(243)}██████╔╝${r}${g(241)}██║${r}${g(239)}   ██║${r}`)
-    term.writeln(`   ${accent}${bold}██╔═██╗ ${r}${g(243)}██╔══██╗${r}${g(241)}██║${r}${g(239)}   ██║${r}`)
-    term.writeln(`   ${accent}${bold}██║  ██╗${r}${g(243)}██║  ██║${r}${g(241)}██║${r}${g(239)}   ██║${r}`)
-    term.writeln(`   ${accent}${bold}╚═╝  ╚═╝${r}${g(243)}╚═╝  ╚═╝${r}${g(241)}╚═╝${r}${g(239)}   ╚═╝${r}`)
+    term.writeln('  \x1b[2m◆\x1b[0m  \x1b[1mkrit\x1b[0m  \x1b[2mv0.1.0\x1b[0m')
+    term.writeln('  \x1b[2m─────────────────────────────\x1b[0m')
     term.writeln('')
-    term.writeln(`   ${muted}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${r}`)
+    term.writeln(`  \x1b[2mplatform\x1b[0m   ${platformNames[platform] || platform}`)
+    term.writeln(`  \x1b[2mshell\x1b[0m      bash`)
+    term.writeln(`  \x1b[2mmodel\x1b[0m      ${window.krit.aiModel || 'groq'}`)
+    term.writeln(`  \x1b[2mprefix\x1b[0m     \x1b[2m-\x1b[0m  for AI  ·  \x1b[2mexit\x1b[0m  to quit`)
     term.writeln('')
-    term.writeln(`   ${muted}◈${r}  ${dim}platform${r}    ${white}${platformNames[platform] || platform}${r}`)
-    term.writeln(`   ${muted}◈${r}  ${dim}version${r}     ${white}v${window.krit.version}${r}`)
-    term.writeln(`   ${muted}◈${r}  ${dim}shell${r}       ${white}${window.krit.shell}${r}`)
-    term.writeln(`   ${muted}◈${r}  ${dim}status${r}      ${accent}● connected${r}`)
-    term.writeln(`   ${muted}◈${r}  ${dim}ai${r}          ${accent}● ollama / qwen2.5:7b${r}`)
-    term.writeln('')
-    term.writeln(`   ${muted}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${r}`)
-    term.writeln('')
-    term.writeln(`   ${muted}${dim}prefix commands with ${r}${accent}- ${r}${dim}to use AI${r}`)
+    term.writeln('  \x1b[2m─────────────────────────────\x1b[0m')
     term.writeln('')
 
     // --- Clock ---

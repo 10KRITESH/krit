@@ -22,14 +22,17 @@ const createWindow = () => {
         minWidth: 600,
         minHeight: 400,
         frame: false,
-        transparent: false,
-        backgroundColor: '#0c1021',
+        transparent: true,
+        backgroundColor: '#00000000',
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
             nodeIntegration: false
         },
-        show: false
+        show: false,
+        roundedCorners: true,
+        vibrancy: 'under-window',
+        visualEffectState: 'active'
     })
 
     mainWindow.loadFile(path.join(__dirname, '../../src/renderer/index.html'))
