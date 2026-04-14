@@ -4,7 +4,7 @@
     "description": "AI-powered terminal",
     "main": "src/main/index.js",
     "scripts": {
-        "start": "electron .",
+        "start": "electron . --disable-gpu",
         "dev": "electron . --dev"
     },
     "dependencies": {

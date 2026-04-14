@@ -3,6 +3,13 @@ const path = require('path')
 const ptyManager = require('./pty')
 const ai = require('../ai/controller')
 
+// Fix GPU/VSync crashes on Wayland (CachyOS, etc.)
+app.commandLine.appendSwitch('ozone-platform-hint', 'auto')
+app.commandLine.appendSwitch('enable-features', 'WaylandWindowDecorations')
+app.commandLine.appendSwitch('disable-gpu-vsync')
+app.commandLine.appendSwitch('disable-software-rasterizer')
+app.disableHardwareAcceleration()
+
 let mainWindow
 let currentCwd = process.env.HOME
 

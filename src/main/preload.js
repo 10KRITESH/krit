@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron')
 contextBridge.exposeInMainWorld('krit', {
     platform: process.platform,
     version: '0.1.0',
-    shell: (process.env.SHELL || '/bin/bash').split('/').pop(),
+    shell: 'bash',
 
     close: () => ipcRenderer.send('window-close'),
     minimize: () => ipcRenderer.send('window-minimize'),

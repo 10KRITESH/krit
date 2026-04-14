@@ -101,15 +101,20 @@ document.addEventListener('DOMContentLoaded', () => {
       window.krit.ptyResize(term.cols, term.rows)
     })
 
+    // --- State ---
+    let lineBuffer = ''
+    let aiMode = false       // waiting for y/n confirmation
+    let aiProcessing = false // AI query in progress
+    let pendingCommand = ''
+    let suppressPty = false  // suppress PTY output during AI prompt reset
+
     // --- Shell output → xterm ---
     window.krit.onPtyData((data) => {
+      if (suppressPty) return
       term.write(data)
     })
 
     // --- Input handling ---
-    let lineBuffer = ''
-    let aiMode = false
-    let pendingCommand = ''
 
     const writeAiLine = (text) => {
       term.writeln(`   ${accent}◈${r}  ${text}`)
@@ -119,39 +124,122 @@ document.addEventListener('DOMContentLoaded', () => {
       term.writeln(`   ${red}◈${r}  ${text}`)
     }
 
+    // Brief PTY output suppression to hide prompt redraw after Ctrl+C
+    let suppressTimer = null
+    const originalOnPtyData = window.krit.onPtyData
+    // We need to intercept PTY output to suppress prompt noise during AI responses
+    // Remove the earlier listener and replace with a filtered one
+    // (the original was set up above at line ~105)
+
+    const resetPromptClean = () => {
+      // Send Enter to get a fresh prompt without Ctrl+C noise
+      suppressPty = true
+      window.krit.ptyInput('\n')
+      // Allow PTY output again after prompt settles
+      if (suppressTimer) clearTimeout(suppressTimer)
+      suppressTimer = setTimeout(() => {
+        suppressPty = false
+      }, 200)
+    }
+
     const handleAiConfirm = (key) => {
       if (key === 'y' || key === 'Y') {
-        const cmd = pendingCommand  // capture before clearing
+        const cmd = pendingCommand
         term.writeln('y')
         term.writeln('')
-        window.krit.ptyInput('\x03')
-        setTimeout(() => {
-          window.krit.ptyInput(cmd + '\n')
-        }, 50)
+        aiMode = false
+        pendingCommand = ''
+        // Send the command directly to PTY
+        window.krit.ptyInput(cmd + '\n')
       } else {
         term.writeln('n')
         term.writeln('')
-        writeAiLine('cancelled.')
+        writeAiLine(`${dim}cancelled.${r}`)
         term.writeln('')
-        window.krit.ptyInput('\x03')
+        aiMode = false
+        pendingCommand = ''
+        resetPromptClean()
       }
-      aiMode = false
-      pendingCommand = ''
     }
 
-    term.onData(async (data) => {
-      // Escape sequences (terminal responses, arrow keys, etc) — always forward to PTY, never buffer
+    const processAiQuery = async (prompt) => {
+      aiProcessing = true
+      writeAiLine(`${dim}thinking...${r}`)
+
+      try {
+        console.log('[krit-ai] Sending query:', prompt)
+        const result = await window.krit.aiQuery(prompt)
+        console.log('[krit-ai] Got result:', JSON.stringify(result))
+
+        if (result.type === 'command') {
+          term.writeln('')
+          writeAiLine(`${white}suggested:${r}  ${accent}${result.content}${r}`)
+          writeAiLine(`${muted}run it? (y/n)${r}`)
+          pendingCommand = result.content
+          aiMode = true
+          aiProcessing = false
+        } else if (result.type === 'error') {
+          writeAiError(result.content)
+          term.writeln('')
+          aiProcessing = false
+          resetPromptClean()
+        } else {
+          term.writeln('')
+          const words = result.content.split(' ')
+          let line = ''
+          for (const word of words) {
+            if ((line + word).length > 70) {
+              writeAiLine(`${white}${line.trim()}${r}`)
+              line = ''
+            }
+            line += word + ' '
+          }
+          if (line.trim()) writeAiLine(`${white}${line.trim()}${r}`)
+          term.writeln('')
+          aiProcessing = false
+          resetPromptClean()
+        }
+      } catch (err) {
+        console.error('[krit-ai] Error:', err)
+        writeAiError(`failed: ${err.message}`)
+        term.writeln('')
+        aiProcessing = false
+        resetPromptClean()
+      }
+    }
+
+    term.onData((data) => {
+      // Escape sequences (arrow keys, etc) — always forward to PTY
       if (data.charCodeAt(0) === 27 && data.length > 1) {
-        window.krit.ptyInput(data)
+        if (!aiMode && !aiProcessing) {
+          lineBuffer = ''  // arrow keys break our buffer tracking
+          window.krit.ptyInput(data)
+        }
         return
       }
 
+      // If waiting for AI confirmation (y/n)
       if (aiMode) {
         handleAiConfirm(data)
         return
       }
 
+      // If AI is processing, ignore all input
+      if (aiProcessing) {
+        return
+      }
+
       const code = data.charCodeAt(0)
+
+      // Ctrl+C
+      if (data === '\x03') {
+        lineBuffer = ''
+        aiMode = false
+        aiProcessing = false
+        pendingCommand = ''
+        window.krit.ptyInput(data)
+        return
+      }
 
       // Enter
       if (data === '\r') {
@@ -160,93 +248,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (input.startsWith('- ')) {
           const prompt = input.slice(2).trim()
-          term.writeln('')
+          term.writeln('')  // move to next line
 
           if (!prompt) {
-            window.krit.ptyInput('\x03')
+            resetPromptClean()
             return
           }
 
-          writeAiLine(`\x1b[2mthinking...\x1b[0m`)
-
-          try {
-            const result = await window.krit.aiQuery(prompt)
-
-            if (result.type === 'command') {
-              term.writeln('')
-              writeAiLine(`\x1b[38;2;200;211;230msuggested:\x1b[0m  \x1b[38;2;93;202;165m${result.content}\x1b[0m`)
-              writeAiLine(`\x1b[38;2;74;85;104mrun it? (y/n)\x1b[0m`)
-              pendingCommand = result.content
-              aiMode = true
-            } else if (result.type === 'error') {
-              writeAiError(result.content)
-              term.writeln('')
-              window.krit.ptyInput('\x03')
-            } else {
-              term.writeln('')
-              const words = result.content.split(' ')
-              let line = ''
-              for (const word of words) {
-                if ((line + word).length > 70) {
-                  writeAiLine(`\x1b[38;2;200;211;230m${line.trim()}\x1b[0m`)
-                  line = ''
-                }
-                line += word + ' '
-              }
-              if (line.trim()) writeAiLine(`\x1b[38;2;200;211;230m${line.trim()}\x1b[0m`)
-              term.writeln('')
-              window.krit.ptyInput('\x03')
-            }
-          } catch (err) {
-            writeAiError(`failed: ${err.message}`)
-            term.writeln('')
-            window.krit.ptyInput('\x03')
-          }
-
+          processAiQuery(prompt)
         } else {
-          // Normal shell command — just forward Enter to PTY
+          // Normal command — forward Enter to PTY
           window.krit.ptyInput('\r')
         }
         return
       }
 
-      // Ctrl+C
-      if (data === '\x03') {
-        lineBuffer = ''
-        aiMode = false
-        pendingCommand = ''
-        window.krit.ptyInput(data)
-        return
-      }
-
-      // Check if we're currently in AI-prefix mode (line starts with -)
-      const wasAiPrefix = lineBuffer.startsWith('-')
-
       // Backspace
       if (code === 127) {
         if (lineBuffer.length > 0) {
-          const wasInAiMode = lineBuffer.startsWith('-')
+          const wasInAiPrefix = lineBuffer.startsWith('-')
           lineBuffer = lineBuffer.slice(0, -1)
 
-          if (wasInAiMode) {
-            // Was in AI mode — handle backspace visually only
+          if (wasInAiPrefix) {
             term.write('\b \b')
           } else {
-            // Normal mode — send to PTY
             window.krit.ptyInput(data)
           }
         }
         return
       }
 
-      // All other input — buffer it
+      // Tab — only forward to PTY if not in AI prefix mode
+      if (data === '\t') {
+        if (!lineBuffer.startsWith('-')) {
+          window.krit.ptyInput(data)
+        }
+        return
+      }
+
+      // All other printable input
       lineBuffer += data
 
-      // Don't forward to PTY if line starts with "-" (AI prefix)
       if (lineBuffer.startsWith('-')) {
-        term.write(data)   // echo visually only
+        // AI prefix mode — echo locally only, don't send to shell
+        term.write(data)
       } else {
-        window.krit.ptyInput(data)  // normal — send to shell
+        // Normal — send to shell
+        window.krit.ptyInput(data)
       }
     })
 
