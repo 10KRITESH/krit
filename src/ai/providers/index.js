@@ -1,5 +1,7 @@
 const ollama = require('./ollama')
 const groq = require('./groq')
+const openai = require('./openai')
+const custom = require('./custom')
 const settings = require('../../config/settings')
 
 const getProvider = () => {
@@ -9,11 +11,12 @@ const getProvider = () => {
     switch (providerName) {
         case 'groq':
             return groq
+        case 'openai':
+            return openai
+        case 'custom':
+            return custom
         case 'ollama':
             return ollama
-        // Future extensions for Phase 9:
-        // case 'openai': return require('./openai')
-        // case 'custom': return require('./custom')
         default:
             return ollama // Fallback
     }

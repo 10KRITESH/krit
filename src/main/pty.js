@@ -40,11 +40,6 @@ const start = (onData, cols = 80, rows = 24) => {
         env
     })
 
-    // Only inject PS1 into bash shell directly, if it's node, the wizard handles spawning bash later
-    if (cmd === shell) {
-        ptyProcess.write(`export PS1='${KRIT_PS1}'\n`)
-    }
-
     ptyProcess.onData(data => onData(data))
 
     return ptyProcess
