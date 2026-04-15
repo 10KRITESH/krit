@@ -1,5 +1,7 @@
 const os = require('os')
 const pty = require('node-pty')
+const settings = require('../config/settings')
+const path = require('path')
 
 // Force bash — fish's line editor (autosuggestions, syntax highlighting,
 // prompt redraws) breaks our AI input interception completely.
@@ -21,7 +23,16 @@ const start = (onData, cols = 80, rows = 24) => {
         HISTCONTROL: 'ignoreboth',
     })
 
-    ptyProcess = pty.spawn(shell, ['--norc', '--noprofile'], {
+    let cmd = shell
+    let args = ['--norc', '--noprofile']
+
+    if (settings.isFirstRun()) {
+        settings.ensureConfigExists() // touch config right away so next tabs don't spawn wizard
+        cmd = process.execPath
+        args = [path.join(__dirname, 'wizard.js')]
+    }
+
+    ptyProcess = pty.spawn(cmd, args, {
         name: 'xterm-256color',
         cols,
         rows,
@@ -29,10 +40,10 @@ const start = (onData, cols = 80, rows = 24) => {
         env
     })
 
-    // Set the prompt after spawn (--norc skips .bashrc so we need to set it)
-    ptyProcess.write(`export PS1='${KRIT_PS1}'\n`)
-    // Clear the initial output
-    ptyProcess.write('clear\n')
+    // Only inject PS1 into bash shell directly, if it's node, the wizard handles spawning bash later
+    if (cmd === shell) {
+        ptyProcess.write(`export PS1='${KRIT_PS1}'\n`)
+    }
 
     ptyProcess.onData(data => onData(data))
 

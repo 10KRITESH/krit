@@ -1,15 +1,16 @@
 const http = require('http')
 const { buildSystemPrompt } = require('../prompts')
+const settings = require('../../config/settings')
 
-const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://127.0.0.1:11434'
-const MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:7b'
+let OLLAMA_HOST = () => settings.get('baseUrl') || 'http://127.0.0.1:11434'
+let MODEL = () => settings.get('model') || 'qwen2.5:7b'
 
 /**
  * Send a request to the Ollama API and return a parsed JSON response.
  */
 const ollamaRequest = (payload) => {
     return new Promise((resolve, reject) => {
-        const url = new URL('/api/chat', OLLAMA_HOST)
+        const url = new URL('/api/chat', OLLAMA_HOST())
 
         const postData = JSON.stringify(payload)
 
@@ -38,7 +39,7 @@ const ollamaRequest = (payload) => {
         })
 
         req.on('error', (err) => {
-            reject(new Error(`Cannot connect to Ollama at ${OLLAMA_HOST}: ${err.message}`))
+            reject(new Error(`Cannot connect to Ollama at ${OLLAMA_HOST()}: ${err.message}`))
         })
 
         req.setTimeout(120000, () => {
@@ -67,7 +68,7 @@ const ask = async (userMessage, cwd, history = []) => {
     ]
 
     const response = await ollamaRequest({
-        model: MODEL,
+        model: MODEL(),
         messages,
         stream: false,
         options: {

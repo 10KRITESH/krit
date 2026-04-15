@@ -1,14 +1,21 @@
 const { OpenAI } = require('openai')
 const { buildSystemPrompt } = require('../prompts')
+const settings = require('../../config/settings')
 
 let groqClient = null
+let currentApiKey = null
 
 const getClient = () => {
-    if (!groqClient) {
+    const apiKey = settings.get('apiKey') || ''
+    const baseUrl = settings.get('baseUrl') || 'https://api.groq.com/openai/v1'
+
+    // Recreate client if API key or base URL changed
+    if (!groqClient || currentApiKey !== apiKey) {
         groqClient = new OpenAI({
-            baseURL: 'https://api.groq.com/openai/v1',
-            apiKey: process.env.GROQ_API_KEY || ''
+            baseURL: baseUrl,
+            apiKey: apiKey
         })
+        currentApiKey = apiKey
     }
     return groqClient
 }
@@ -23,7 +30,7 @@ const ask = async (userMessage, cwd, history = []) => {
 
     try {
         const response = await getClient().chat.completions.create({
-            model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+            model: settings.get('model') || 'llama-3.3-70b-versatile',
             messages,
             temperature: 0.3,
         })

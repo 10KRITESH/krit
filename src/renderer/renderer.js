@@ -11,29 +11,29 @@ document.addEventListener('DOMContentLoaded', () => {
       lineHeight: 1.5,
       letterSpacing: 0,
       theme: {
-        background:          'transparent',
-        foreground:          '#c8cdd8',
-        cursor:              '#c8cdd8',
-        cursorAccent:        '#080a12',
+        background: 'transparent',
+        foreground: '#c8cdd8',
+        cursor: '#c8cdd8',
+        cursorAccent: '#080a12',
         selectionBackground: 'rgba(200, 205, 216, 0.12)',
 
-        black:         '#1a1d26',
-        red:           '#e06c75',
-        green:         '#8fbf7f',
-        yellow:        '#d4a96a',
-        blue:          '#6a9fd4',
-        magenta:       '#b48ead',
-        cyan:          '#7fbfbf',
-        white:         '#c8cdd8',
+        black: '#1a1d26',
+        red: '#e06c75',
+        green: '#8fbf7f',
+        yellow: '#d4a96a',
+        blue: '#6a9fd4',
+        magenta: '#b48ead',
+        cyan: '#7fbfbf',
+        white: '#c8cdd8',
 
-        brightBlack:   '#3d4255',
-        brightRed:     '#e06c75',
-        brightGreen:   '#8fbf7f',
-        brightYellow:  '#d4a96a',
-        brightBlue:    '#6a9fd4',
+        brightBlack: '#3d4255',
+        brightRed: '#e06c75',
+        brightGreen: '#8fbf7f',
+        brightYellow: '#d4a96a',
+        brightBlue: '#6a9fd4',
         brightMagenta: '#b48ead',
-        brightCyan:    '#7fbfbf',
-        brightWhite:   '#eef0f4',
+        brightCyan: '#7fbfbf',
+        brightWhite: '#eef0f4',
       },
       allowTransparency: true,
       scrollback: 10000,
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const { os } = window.krit
     const up = os.uptime
     const uptimeStr = `${Math.floor(up / 3600)} hours, ${Math.floor((up % 3600) / 60)} minutes`
-    const memStr = `${((os.totalmem - os.freemem) / (1024**3)).toFixed(2)} GiB / ${(os.totalmem / (1024**3)).toFixed(2)} GiB`
+    const memStr = `${((os.totalmem - os.freemem) / (1024 ** 3)).toFixed(2)} GiB / ${(os.totalmem / (1024 ** 3)).toFixed(2)} GiB`
 
     const padBox = (name, val) => {
       const left = `   ${name}`.padEnd(12, ' ')
@@ -367,7 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Capture everything before the newline into the buffer
         const parts = data.split(/[\r\n]+/)
         lineBuffer += parts[0]
-        
+
         // Use trimStart so any accidental leading spaces don't bypass the check
         const input = lineBuffer.trimStart()
         lineBuffer = ''

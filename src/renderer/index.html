@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>krit</title>
   <link rel="stylesheet" href="../../node_modules/xterm/css/xterm.css" />
   <style>
@@ -12,7 +13,8 @@
       box-sizing: border-box;
     }
 
-    html, body {
+    html,
+    body {
       width: 100%;
       height: 100%;
       background: transparent;
@@ -64,9 +66,17 @@
       transform: scale(1.1);
     }
 
-    .dot-close { background: #E24B4A; }
-    .dot-min   { background: #EF9F27; }
-    .dot-max   { background: #5DCAA5; }
+    .dot-close {
+      background: #E24B4A;
+    }
+
+    .dot-min {
+      background: #EF9F27;
+    }
+
+    .dot-max {
+      background: #5DCAA5;
+    }
 
     .titlebar-center {
       position: absolute;
@@ -121,7 +131,7 @@
     .xterm-viewport {
       background: transparent !important;
       scrollbar-width: thin;
-      scrollbar-color: rgba(255,255,255,0.08) transparent;
+      scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
     }
 
     .xterm-screen {
@@ -142,13 +152,14 @@
     }
   </style>
 </head>
+
 <body>
   <div class="window">
     <div class="titlebar">
       <div class="titlebar-left">
         <button class="dot dot-close" onclick="window.krit.closeWindow()"></button>
-        <button class="dot dot-min"   onclick="window.krit.minimize()"></button>
-        <button class="dot dot-max"   onclick="window.krit.maximize()"></button>
+        <button class="dot dot-min" onclick="window.krit.minimize()"></button>
+        <button class="dot dot-max" onclick="window.krit.maximize()"></button>
       </div>
       <div class="titlebar-center">
         <span class="titlebar-name">krit</span>
@@ -167,4 +178,5 @@
   <script src="../../node_modules/xterm-addon-fit/lib/xterm-addon-fit.js"></script>
   <script src="renderer.js"></script>
 </body>
+
 </html>
