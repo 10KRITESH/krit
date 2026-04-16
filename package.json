@@ -1,6 +1,6 @@
 {
     "name": "krit",
-    "version": "0.1.0",
+    "version": "0.1.2",
     "description": "AI-powered terminal",
     "author": {
         "name": "Kritesh Goud",
@@ -11,11 +11,14 @@
         "start": "electron . --disable-gpu",
         "dev": "electron . --dev",
         "pack": "electron-builder --dir",
-        "dist": "electron-builder"
+        "dist": "electron-builder",
+        "postinstall": "electron-builder install-app-deps",
+        "rebuild": "electron-builder install-app-deps"
     },
     "build": {
         "appId": "com.kritesh.krit",
         "productName": "Krit",
+        "asarUnpack": ["**/*.node"],
         "directories": {
             "output": "dist",
             "buildResources": "build"
@@ -24,7 +27,9 @@
             "target": [
                 "AppImage",
                 "deb"
-            ]
+            ],
+            "category": "TerminalEmulator",
+            "executableName": "krit"
         },
         "win": {
             "target": "nsis"

@@ -62,14 +62,15 @@ function finish() {
     console.log(`\r\n${accent}✔ All set! You can always change settings by typing "- config set <key> <value>".${r}\r\n`)
     rl.close()
 
-    // Spawn bash to take over this PTY session seamlessly
-    const shell = process.env.SHELL || '/bin/bash'
+    // Force bash — fish breaks AI interception
+    const shell = '/bin/bash'
     const bash = spawn(shell, ['--norc', '--noprofile'], {
         stdio: 'inherit',
         env: Object.assign({}, process.env, {
              PS1: '\\n  \\[\\e[2m\\]◄\\[\\e[0m\\] \\[\\e[2m\\]◎\\[\\e[0m\\] ',
              TERM: 'xterm-256color',
-             HISTCONTROL: 'ignoreboth'
+             HISTCONTROL: 'ignoreboth',
+             SHELL: '/bin/bash'
         })
     })
 

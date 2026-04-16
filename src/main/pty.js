@@ -14,22 +14,30 @@ const KRIT_PS1 = '\\n  \\[\\e[2m\\]◄\\[\\e[0m\\] \\[\\e[2m\\]◎\\[\\e[0m\\] '
 let ptyProcess = null
 
 const start = (onData, cols = 80, rows = 24) => {
-    // Build a clean env — override SHELL so child processes don't spawn fish
-    const env = Object.assign({}, process.env, {
+    // Scrub environment to prevent host shell leakage (fish, starship, etc.)
+    const cleanEnv = { ...process.env }
+    delete cleanEnv.SHELL
+    delete cleanEnv.PROMPT_COMMAND
+    delete cleanEnv.STARSHIP_SHELL
+    delete cleanEnv.STARSHIP_SESSION_CONFIG
+    
+    const env = Object.assign({}, cleanEnv, {
         SHELL: '/bin/bash',
         PS1: KRIT_PS1,
         TERM: 'xterm-256color',
-        // Disable bash features that could interfere
         HISTCONTROL: 'ignoreboth',
     })
 
-    let cmd = shell
+    let cmd = '/bin/bash'
     let args = ['--norc', '--noprofile']
 
     if (settings.isFirstRun()) {
-        settings.ensureConfigExists() // touch config right away so next tabs don't spawn wizard
+        settings.ensureConfigExists()
+        // In production/AppImage, process.execPath is the binary itself.
+        // We use ELECTRON_RUN_AS_NODE to make it act like a node binary for the wizard.
         cmd = process.execPath
         args = [path.join(__dirname, 'wizard.js')]
+        env.ELECTRON_RUN_AS_NODE = '1'
     }
 
     ptyProcess = pty.spawn(cmd, args, {

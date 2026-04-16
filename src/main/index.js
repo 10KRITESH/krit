@@ -8,8 +8,11 @@ const safety = require('../ai/safety')
 // Fix GPU/VSync crashes on Wayland (CachyOS, etc.)
 app.commandLine.appendSwitch('ozone-platform-hint', 'auto')
 app.commandLine.appendSwitch('enable-features', 'WaylandWindowDecorations')
-app.commandLine.appendSwitch('disable-gpu-vsync')
+app.commandLine.appendSwitch('disable-gpu')
+app.commandLine.appendSwitch('disable-gpu-compositing')
 app.commandLine.appendSwitch('disable-software-rasterizer')
+app.commandLine.appendSwitch('disable-gpu-rasterization')
+app.commandLine.appendSwitch('no-sandbox')
 app.disableHardwareAcceleration()
 
 let mainWindow
@@ -21,7 +24,7 @@ const createWindow = () => {
         height: 650,
         minWidth: 600,
         minHeight: 400,
-        frame: false,
+        frame: true, // Use standard frame for now to fix Wayland rendering
         transparent: false,
         backgroundColor: '#080a12',
         webPreferences: {
@@ -30,15 +33,17 @@ const createWindow = () => {
             nodeIntegration: false,
             sandbox: false
         },
-        show: false,
+        show: true, // Show immediately
         roundedCorners: true
     })
 
     mainWindow.loadFile(path.join(__dirname, '../../src/renderer/index.html'))
+    
+    // Auto-open DevTools to see what's happening
+    mainWindow.webContents.openDevTools({ mode: 'detach' })
 
     mainWindow.once('ready-to-show', () => {
-        mainWindow.show()
-
+        // Already shown, but ensure PTY starts
         ptyManager.start(
             (data) => {
                 // try to track cwd from shell output

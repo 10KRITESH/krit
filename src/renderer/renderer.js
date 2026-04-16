@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (statusPlatform) statusPlatform.textContent = platformNames[platform] || platform
 
     const statusShell = document.getElementById('statusbar-shell')
-    if (statusShell) statusShell.textContent = window.krit.shell
+    if (statusShell) statusShell.textContent = 'bash'
 
     // --- Color helpers ---
     const g = (code) => `\x1b[38;5;${code}m`
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     term.writeln('')
-    term.writeln(`     __        _ __ `)
+    term.writeln(`     __        _ __    ${accent}v0.1.1${r}`)
     term.writeln(`    / /__  ___(_) /_`)
     term.writeln(`   / //_/ / __/ / __/`)
     term.writeln(`  / ,<   / / / / /_ `)
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
     term.writeln('     ╭───────────────────────────────────╮')
     term.writeln(padBox('kernel', os.release))
     term.writeln(padBox('uptime', uptimeStr))
-    term.writeln(padBox('shell', os.shell.split('/').pop()))
+    term.writeln(padBox('shell', 'bash'))
     term.writeln(padBox('mem', memStr))
     term.writeln(padBox('pkgs', 'unknown'))
     term.writeln(padBox('user', os.username))
