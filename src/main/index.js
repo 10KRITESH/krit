@@ -24,7 +24,7 @@ const createWindow = () => {
         height: 650,
         minWidth: 600,
         minHeight: 400,
-        frame: true, // Use standard frame for now to fix Wayland rendering
+        frame: false, // Back to sleek borderless!
         transparent: false,
         backgroundColor: '#080a12',
         webPreferences: {
@@ -33,17 +33,16 @@ const createWindow = () => {
             nodeIntegration: false,
             sandbox: false
         },
-        show: true, // Show immediately
+        show: true, 
         roundedCorners: true
     })
 
     mainWindow.loadFile(path.join(__dirname, '../../src/renderer/index.html'))
     
-    // Auto-open DevTools to see what's happening
-    mainWindow.webContents.openDevTools({ mode: 'detach' })
+    // DevTools removed for clean production feel
 
     mainWindow.once('ready-to-show', () => {
-        // Already shown, but ensure PTY starts
+        // PTY starts automatically now
         ptyManager.start(
             (data) => {
                 // try to track cwd from shell output
