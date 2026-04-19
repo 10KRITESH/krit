@@ -67,36 +67,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const memStr = `${((os.totalmem - os.freemem) / (1024 ** 3)).toFixed(2)} / ${(os.totalmem / (1024 ** 3)).toFixed(2)} GiB`
 
     const padBox = (name, icon, val) => {
-      const left = ` ${icon} ${name}`.padEnd(12, ' ')
-      const right = String(val).slice(0, 16).padStart(17, ' ')
-      return `│${muted}${left}${r}${white}${right}${r}│`
+      const left = `${icon}  ${name}`.padEnd(9, ' ')
+      const right = String(val).slice(0, 22).padStart(22, ' ')
+      return `│ ${white}${left}  ${right}${r} │`
     }
 
     const logoLines = [
-      `     ${accent}__        _ __${r}`,
-      `    ${accent}/ /__  ___(_) /_${r}`,
-      `   ${accent}/ //_/ / __/ / __/${r}`,
-      `  ${accent}/ ,<   / / / / /_ ${r}`,
-      ` ${accent}/_/|_| /_/ /_/\__/ ${r}`
+      `     ${white}______           __          __  _       ${r}`,
+      `    ${white}/ ____/___ ____  / /__  _____/ /_(_)___ _ ${r}`,
+      `   ${white}/ /   / __ \`/ _ \\/ / _ \\/ ___/ __/ / __ \`/ ${r}`,
+      `  ${white}/ /___/ /_/ /  __/ /  __(__  ) /_/ / /_/ /  ${r}`,
+      `  ${white}\\____/\\__,_/\\___/_/\\___/____/\\__/_/\\__,_/   ${r}`
     ]
 
     const boxLines = [
-      '╭──────────────────────────────╮',
-      padBox('kernel', '', os.release),
-      padBox('uptime', '', uptimeStr),
-      padBox('shell', '', 'bash'),
-      padBox('mem', '', memStr),
-      padBox('pkgs', '󰏖', 'unknown'),
-      padBox('user', '', os.username),
-      padBox('hname', '󰒋', os.hostname),
-      padBox('distro', '', platform === 'linux' ? 'CachyOS' : (platformNames[platform] || platform)),
-      '╰──────────────────────────────╯'
+      `     ${white}╭───────────────────────────────────╮${r}`,
+      `     ${padBox('kernel', '', os.release)}`,
+      `     ${padBox('uptime', '', uptimeStr)}`,
+      `     ${padBox('shell', '', 'fish')}`,
+      `     ${padBox('mem', '', memStr)}`,
+      `     ${padBox('pkgs', '', '1317')}`,
+      `     ${padBox('user', '', os.username)}`,
+      `     ${padBox('hname', '', os.hostname)}`,
+      `     ${padBox('distro', '󰻀', platform === 'linux' ? 'CachyOS' : (platformNames[platform] || platform))}`,
+      `     ${white}╰───────────────────────────────────╯${r}`
     ]
 
     term.writeln('')
     logoLines.forEach(line => term.writeln(line))
     term.writeln('')
-    boxLines.forEach(line => term.writeln(`     ${line}`))
+    boxLines.forEach(line => term.writeln(line))
     term.writeln('')
 
     // --- PTY resize ---

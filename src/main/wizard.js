@@ -64,13 +64,13 @@ function finish() {
 
     // Force bash — fish breaks AI interception
     const shell = '/bin/bash'
-    const bash = spawn(shell, ['--norc', '--noprofile'], {
+    const tmpRc = require('path').join(require('os').tmpdir(), '.krit_bashrc')
+    const bash = spawn(shell, ['--rcfile', tmpRc, '-i'], {
         stdio: 'inherit',
         env: Object.assign({}, process.env, {
              TERM: 'xterm-256color',
              HISTCONTROL: 'ignoreboth',
-             SHELL: '/bin/bash',
-             PROMPT_COMMAND: 'eval "$(starship init bash)"'
+             SHELL: '/bin/bash'
         })
     })
 

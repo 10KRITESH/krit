@@ -20,12 +20,18 @@ const start = (onData, cols = 80, rows = 24) => {
     const env = Object.assign({}, cleanEnv, {
         SHELL: '/bin/bash',
         TERM: 'xterm-256color',
-        HISTCONTROL: 'ignoreboth',
-        PROMPT_COMMAND: 'eval "$(starship init bash)" && alias ls="eza --icons --group-directories-first" 2>/dev/null || alias ls="ls --color=auto"; unset PROMPT_COMMAND'
+        HISTCONTROL: 'ignoreboth'
     })
 
+    const tmpRc = path.join(os.tmpdir(), '.krit_bashrc')
+    require('fs').writeFileSync(tmpRc, `
+if [ -f ~/.bashrc ]; then source ~/.bashrc; fi
+eval "$(starship init bash)"
+alias ls='eza --icons --group-directories-first' 2>/dev/null || alias ls='ls --color=auto'
+`)
+
     let cmd = '/bin/bash'
-    let args = ['--norc', '--noprofile', '-i']
+    let args = ['--rcfile', tmpRc, '-i']
 
     if (settings.isFirstRun()) {
         settings.ensureConfigExists()
