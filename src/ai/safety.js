@@ -45,7 +45,7 @@ const WARNING_PATTERNS = [
 ]
 
 const SAFE_COMMANDS = [
-    'ls', 'la', 'll', 'pwd', 'cat', 'echo', 'grep', 'find',
+    'ls', 'eza', 'la', 'll', 'pwd', 'cat', 'echo', 'grep', 'find',
     'which', 'whoami', 'uname', 'date', 'uptime', 'df', 'du',
     'ps', 'top', 'htop', 'free', 'env', 'printenv', 'history',
     'man', 'help', 'type', 'file', 'stat', 'wc', 'head', 'tail',

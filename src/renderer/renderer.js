@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
         background: 'transparent',
         foreground: '#c8cdd8',
         cursor: '#c8cdd8',
-        cursorAccent: '#080a12',
+        cursorAccent: '#1A1B26',
         selectionBackground: 'rgba(200, 205, 216, 0.12)',
 
         black: '#1a1d26',
@@ -73,17 +73,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const memStr = `${((os.totalmem - os.freemem) / (1024 ** 3)).toFixed(2)} GiB / ${(os.totalmem / (1024 ** 3)).toFixed(2)} GiB`
 
     const padBox = (name, val) => {
-      const left = `   ${name}`.padEnd(12, ' ')
-      const right = String(val).slice(0, 22).padStart(23, ' ')
-      return `     │${left}${right}│`
+      const left = `   ${muted}${name}${r}`.padEnd(21, ' ')
+      const right = `${white}${val}${r}`.padEnd(31, ' ')
+      return `     │${left}${right} │`
     }
 
     term.writeln('')
-    term.writeln(`     __        _ __    ${accent}v0.1.1${r}`)
-    term.writeln(`    / /__  ___(_) /_`)
-    term.writeln(`   / //_/ / __/ / __/`)
-    term.writeln(`  / ,<   / / / / /_ `)
-    term.writeln(` /_/|_| /_/ /_/\__/ `)
+    term.writeln(`     ${accent}__        _ __    v0.1.1${r}`)
+    term.writeln(`     ${accent}/ /__  ___(_) /_`)
+    term.writeln(`    ${accent}/ //_/ / __/ / __/`)
+    term.writeln(`   ${accent}/ ,<   / / / / /_ `)
+    term.writeln(`  ${accent}/_/|_| /_/ /_/\__/ ${r}`)
     term.writeln('')
     term.writeln('     ╭───────────────────────────────────╮')
     term.writeln(padBox('kernel', os.release))

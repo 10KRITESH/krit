@@ -9,7 +9,7 @@ const shell = process.platform === 'win32' ? 'powershell.exe' : '/bin/bash'
 
 // Custom prompt that matches the krit Phase 7 aesthetic
 // ◄ ◎ (muted symbols, no inline cwd)
-const KRIT_PS1 = '\\n  \\[\\e[2m\\]◄\\[\\e[0m\\] \\[\\e[2m\\]◎\\[\\e[0m\\] '
+const KRIT_PS1 = '\\n  \\[\\e[38;2;93;202;165m\\]◄\\[\\e[0m\\] \\[\\e[38;2;93;202;165m\\]◎\\[\\e[0m\\] '
 
 let ptyProcess = null
 
@@ -29,7 +29,7 @@ const start = (onData, cols = 80, rows = 24) => {
     })
 
     let cmd = '/bin/bash'
-    let args = ['--norc', '--noprofile']
+    let args = ['--norc', '--noprofile', '-i']
 
     if (settings.isFirstRun()) {
         settings.ensureConfigExists()
@@ -47,6 +47,9 @@ const start = (onData, cols = 80, rows = 24) => {
         cwd: process.env.HOME,
         env
     })
+
+    // Inject aliases for rich directory listings
+    ptyProcess.write('alias ls="eza --icons --group-directories-first -1" 2>/dev/null || alias ls="ls --color=auto"\n')
 
     ptyProcess.onData(data => onData(data))
 
