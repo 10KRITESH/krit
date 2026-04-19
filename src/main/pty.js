@@ -48,9 +48,6 @@ const start = (onData, cols = 80, rows = 24) => {
         env
     })
 
-    // Inject aliases for rich directory listings
-    ptyProcess.write('alias ls="eza --icons --group-directories-first -1" 2>/dev/null || alias ls="ls --color=auto"\n')
-
     ptyProcess.onData(data => onData(data))
 
     return ptyProcess

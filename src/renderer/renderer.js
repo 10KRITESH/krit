@@ -73,17 +73,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const memStr = `${((os.totalmem - os.freemem) / (1024 ** 3)).toFixed(2)} GiB / ${(os.totalmem / (1024 ** 3)).toFixed(2)} GiB`
 
     const padBox = (name, val) => {
-      const left = `   ${muted}${name}${r}`.padEnd(21, ' ')
-      const right = `${white}${val}${r}`.padEnd(31, ' ')
-      return `     │${left}${right} │`
+      const left = `   ${name}`.padEnd(12, ' ')
+      const right = String(val).slice(0, 22).padStart(23, ' ')
+      return `     │${muted}${left}${r}${white}${right}${r}│`
     }
 
     term.writeln('')
-    term.writeln(`     ${accent}__        _ __    v0.1.1${r}`)
-    term.writeln(`     ${accent}/ /__  ___(_) /_`)
-    term.writeln(`    ${accent}/ //_/ / __/ / __/`)
-    term.writeln(`   ${accent}/ ,<   / / / / /_ `)
-    term.writeln(`  ${accent}/_/|_| /_/ /_/\__/ ${r}`)
+    term.writeln(`     ${accent}__        _ __${r}    ${dim}v0.1.1${r}`)
+    term.writeln(`    ${accent}/ /__  ___(_) /_${r}`)
+    term.writeln(`   ${accent}/ //_/ / __/ / __/${r}`)
+    term.writeln(`  ${accent}/ ,<   / / / / /_ ${r}`)
+    term.writeln(` ${accent}/_/|_| /_/ /_/\__/ ${r}`)
     term.writeln('')
     term.writeln('     ╭───────────────────────────────────╮')
     term.writeln(padBox('kernel', os.release))
