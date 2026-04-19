@@ -9,7 +9,7 @@ const shell = process.platform === 'win32' ? 'powershell.exe' : '/bin/bash'
 
 // Custom prompt that matches the krit Phase 7 aesthetic
 // ◄ ◎ (muted symbols, no inline cwd)
-const KRIT_PS1 = '\\n  \\[\\e[38;2;93;202;165m\\]◄\\[\\e[0m\\] \\[\\e[38;2;93;202;165m\\]◎\\[\\e[0m\\] '
+const KRIT_PS1 = '\\n  \\[\\e[3m\\e[37m\\]◄ 0s \\[\\e[0m\\]\\[\\e[1;3;33m\\]◎\\[\\e[0m\\] '
 
 let ptyProcess = null
 
@@ -26,6 +26,7 @@ const start = (onData, cols = 80, rows = 24) => {
         PS1: KRIT_PS1,
         TERM: 'xterm-256color',
         HISTCONTROL: 'ignoreboth',
+        PROMPT_COMMAND: "alias ls='eza --icons --group-directories-first' 2>/dev/null || alias ls='ls --color=auto'; unset PROMPT_COMMAND"
     })
 
     let cmd = '/bin/bash'

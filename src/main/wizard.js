@@ -67,7 +67,7 @@ function finish() {
     const bash = spawn(shell, ['--norc', '--noprofile'], {
         stdio: 'inherit',
         env: Object.assign({}, process.env, {
-             PS1: '\\n  \\[\\e[38;2;93;202;165m\\]◄\\[\\e[0m\\] \\[\\e[38;2;93;202;165m\\]◎\\[\\e[0m\\] ',
+             PS1: '\\n  \\[\\e[3m\\e[37m\\]◄ 0s \\[\\e[0m\\]\\[\\e[1;3;33m\\]◎\\[\\e[0m\\] ',
              TERM: 'xterm-256color',
              HISTCONTROL: 'ignoreboth',
              SHELL: '/bin/bash'

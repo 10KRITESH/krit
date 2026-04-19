@@ -5,35 +5,35 @@ document.addEventListener('DOMContentLoaded', () => {
       cursorStyle: 'bar',
       cursorWidth: 1.5,
       fontSize: 12,
-      fontFamily: '"JetBrains Mono", "JetBrains Mono NF", monospace',
+      fontFamily: '"CaskaydiaCove NF", "JetBrains Mono NF", "JetBrains Mono", monospace',
       fontWeight: '400',
       fontWeightBold: '600',
       lineHeight: 1.5,
       letterSpacing: 0,
       theme: {
         background: 'transparent',
-        foreground: '#c8cdd8',
-        cursor: '#c8cdd8',
-        cursorAccent: '#1A1B26',
-        selectionBackground: 'rgba(200, 205, 216, 0.12)',
+        foreground: '#e5e4f0',
+        cursor: '#e5e4f0',
+        cursorAccent: '#0d0e12',
+        selectionBackground: 'rgba(229, 228, 240, 0.15)',
 
-        black: '#1a1d26',
-        red: '#e06c75',
-        green: '#8fbf7f',
-        yellow: '#d4a96a',
-        blue: '#6a9fd4',
-        magenta: '#b48ead',
-        cyan: '#7fbfbf',
-        white: '#c8cdd8',
+        black: '#353434',
+        red: '#9d79ff',
+        green: '#44def5',
+        yellow: '#ffdcf2',
+        blue: '#93abd6',
+        magenta: '#aba1ed',
+        cyan: '#9dceff',
+        white: '#e8d3de',
 
-        brightBlack: '#3d4255',
-        brightRed: '#e06c75',
-        brightGreen: '#8fbf7f',
-        brightYellow: '#d4a96a',
-        brightBlue: '#6a9fd4',
-        brightMagenta: '#b48ead',
-        brightCyan: '#7fbfbf',
-        brightWhite: '#eef0f4',
+        brightBlack: '#ac9fa9',
+        brightRed: '#b498ff',
+        brightGreen: '#89ecff',
+        brightYellow: '#fff0f6',
+        brightBlue: '#b2c2dc',
+        brightMagenta: '#c2b7f7',
+        brightCyan: '#bae0ff',
+        brightWhite: '#ffffff',
       },
       allowTransparency: true,
       scrollback: 10000,
@@ -61,40 +61,55 @@ document.addEventListener('DOMContentLoaded', () => {
     const r = '\x1b[0m'
     const bold = '\x1b[1m'
     const dim = '\x1b[2m'
-    const muted = '\x1b[38;2;74;85;104m'
-    const white = '\x1b[38;2;200;211;230m'
-    const accent = '\x1b[38;2;93;202;165m'
-    const red = '\x1b[38;2;226;75;74m'
+    const muted = '\x1b[38;2;116;117;127m'
+    const white = '\x1b[38;2;229;228;240m'
+    const accent = '\x1b[38;2;122;162;247m'
+    const red = '\x1b[38;2;249;115;134m'
 
     // startup banner
     const { os } = window.krit
     const up = os.uptime
     const uptimeStr = `${Math.floor(up / 3600)} hours, ${Math.floor((up % 3600) / 60)} minutes`
-    const memStr = `${((os.totalmem - os.freemem) / (1024 ** 3)).toFixed(2)} GiB / ${(os.totalmem / (1024 ** 3)).toFixed(2)} GiB`
+    const memStr = `${((os.totalmem - os.freemem) / (1024 ** 3)).toFixed(2)} / ${(os.totalmem / (1024 ** 3)).toFixed(2)} GiB`
 
-    const padBox = (name, val) => {
-      const left = `   ${name}`.padEnd(12, ' ')
-      const right = String(val).slice(0, 22).padStart(23, ' ')
-      return `     │${muted}${left}${r}${white}${right}${r}│`
+    const padBox = (name, icon, val) => {
+      const left = ` ${icon} ${name}`.padEnd(12, ' ')
+      const right = String(val).slice(0, 16).padStart(17, ' ')
+      return `│${muted}${left}${r}${white}${right}${r}│`
     }
 
+    const logoLines = [
+      `  ${accent} ___  __  _______   ___  _________ ${r}`,
+      `  ${accent}|_  |/ / |_   __ \\ |_  ||  _   _  |${r}`,
+      `  ${accent}  | ' /    | |__) |  | | |_/ | | \\_|${r}`,
+      `  ${accent}  |  <     |  __ /   | |     | |    ${r}`,
+      `  ${accent} _| | \\ \\_ _| |  \\_ _| |_   _| |_   ${r}`,
+      `  ${accent}|____||___|____| |___|_____| |_____|  ${r}`,
+      '                                         ',
+      '                                         ',
+      '                                         ',
+      '                                         '
+    ]
+
+    const boxLines = [
+      '╭──────────────────────────────╮',
+      padBox('kernel', '', os.release),
+      padBox('uptime', '', uptimeStr),
+      padBox('shell', '', 'bash'),
+      padBox('mem', '', memStr),
+      padBox('pkgs', '󰏖', 'unknown'),
+      padBox('user', '', os.username),
+      padBox('hname', '󰒋', os.hostname),
+      padBox('distro', '', platform === 'linux' ? 'CachyOS' : (platformNames[platform] || platform)),
+      '╰──────────────────────────────╯'
+    ]
+
     term.writeln('')
-    term.writeln(`     ${accent}__        _ __${r}    ${dim}v0.1.1${r}`)
-    term.writeln(`    ${accent}/ /__  ___(_) /_${r}`)
-    term.writeln(`   ${accent}/ //_/ / __/ / __/${r}`)
-    term.writeln(`  ${accent}/ ,<   / / / / /_ ${r}`)
-    term.writeln(` ${accent}/_/|_| /_/ /_/\__/ ${r}`)
-    term.writeln('')
-    term.writeln('     ╭───────────────────────────────────╮')
-    term.writeln(padBox('kernel', os.release))
-    term.writeln(padBox('uptime', uptimeStr))
-    term.writeln(padBox('shell', 'bash'))
-    term.writeln(padBox('mem', memStr))
-    term.writeln(padBox('pkgs', 'unknown'))
-    term.writeln(padBox('user', os.username))
-    term.writeln(padBox('hname', os.hostname))
-    term.writeln(padBox('distro', platformNames[platform] || platform))
-    term.writeln('     ╰───────────────────────────────────╯')
+    for (let i = 0; i < Math.max(logoLines.length, boxLines.length); i++) {
+      const left = logoLines[i] || '                                         '
+      const right = boxLines[i] || ''
+      term.writeln(`     ${left} ${right}`)
+    }
     term.writeln('')
 
     // --- Clock ---
@@ -110,6 +125,29 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('resize', () => {
       fitAddon.fit()
       window.krit.ptyResize(term.cols, term.rows)
+    })
+
+    // --- Keyboard Zoom ---
+    document.addEventListener('keydown', (e) => {
+      const isCtrl = e.ctrlKey || e.metaKey
+      if (!isCtrl) return
+
+      if (e.key === '=' || e.key === '+') {
+        e.preventDefault()
+        term.options.fontSize = Math.min(term.options.fontSize + 1, 32)
+        fitAddon.fit()
+        window.krit.ptyResize(term.cols, term.rows)
+      } else if (e.key === '-') {
+        e.preventDefault()
+        term.options.fontSize = Math.max(term.options.fontSize - 1, 6)
+        fitAddon.fit()
+        window.krit.ptyResize(term.cols, term.rows)
+      } else if (e.key === '0') {
+        e.preventDefault()
+        term.options.fontSize = 12
+        fitAddon.fit()
+        window.krit.ptyResize(term.cols, term.rows)
+      }
     })
 
     // --- State ---
@@ -171,11 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Brief PTY output suppression to hide prompt redraw after Ctrl+C
     let suppressTimer = null
-    const originalOnPtyData = window.krit.onPtyData
-    // We need to intercept PTY output to suppress prompt noise during AI responses
-    // Remove the earlier listener and replace with a filtered one
-    // (the original was set up above at line ~105)
-
+    
     const resetPromptClean = () => {
       // Send Enter to get a fresh prompt without Ctrl+C noise
       suppressPty = true
@@ -190,8 +224,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleAiConfirm = (key) => {
       if (aiMode === 'danger') {
         // danger mode requires full "yes"
-        lineBuffer += key
-
         if (key === '\r' || key === '\n') {
           const answer = lineBuffer.trim().toLowerCase()
           lineBuffer = ''
@@ -214,6 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         } else if (key.charCodeAt(0) !== 127) {
           term.write(key)
+          lineBuffer += key
         } else {
           // backspace in danger mode
           if (lineBuffer.length > 0) {
@@ -260,62 +293,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
           // draw the right card based on safety level
           if (level === 'danger') {
-            term.writeln(`   \x1b[38;2;226;75;74m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m`)
-            term.writeln(`   \x1b[38;2;226;75;74m⚠  DANGEROUS COMMAND\x1b[0m`)
-            term.writeln(`   \x1b[38;2;226;75;74m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m`)
+            term.writeln(`   \x1b[38;2;249;115;134m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m`)
+            term.writeln(`   ${red}DANGEROUS COMMAND${r}`)
+            term.writeln(`   ${warning}`)
+            term.writeln(`   \x1b[38;2;249;115;134m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m`)
             term.writeln('')
-            writeAiLine(`${red}command:${r}   ${accent}${result.content}${r}`)
-            if (warning) writeAiLine(`${red}warning:${r}   ${white}${warning}${r}`)
+            term.writeln(`   ${white}${result.content}${r}`)
             term.writeln('')
-            writeAiLine(`${red}type "yes" to confirm or "n" to cancel:${r}`)
-            pendingCommand = result.content
-            aiMode = 'danger'
+            term.write(`   ${red}Type 'yes' to execute${r}: `)
           } else if (level === 'warning') {
             term.writeln(`   \x1b[38;2;239;159;39m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m`)
-            term.writeln(`   \x1b[38;2;239;159;39m⚡  CAUTION\x1b[0m`)
+            term.writeln(`   \x1b[38;2;239;159;39mSENSITIVE COMMAND\x1b[0m`)
+            term.writeln(`   ${warning}`)
             term.writeln(`   \x1b[38;2;239;159;39m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m`)
             term.writeln('')
-            writeAiLine(`${g(214)}command:${r}   ${accent}${result.content}${r}`)
-            if (warning) writeAiLine(`${g(214)}note:${r}      ${white}${warning}${r}`)
+            term.writeln(`   ${white}${result.content}${r}`)
             term.writeln('')
-            writeAiLine(`${muted}run it? (y/n)${r}`)
-            pendingCommand = result.content
-            aiMode = true
+            term.write(`   ${accent}run it? (y/n)${r} `)
           } else {
-            writeAiLine(`${white}suggested:${r}  ${accent}${result.content}${r}`)
-            writeAiLine(`${muted}run it? (y/n)${r}`)
-            pendingCommand = result.content
-            aiMode = true
+            term.writeln(`   ${muted}suggested:${r}  ${accent}${result.content}${r}`)
+            term.write(`   ${accent}run it? (y/n)${r} `)
           }
 
-          aiProcessing = false
-
-        } else if (result.type === 'error') {
-          writeAiError(result.content)
-          term.writeln('')
-          aiProcessing = false
-          resetPromptClean()
+          aiMode = level
+          pendingCommand = result.content
         } else {
+          // info/answer type
           term.writeln('')
-          const words = result.content.split(' ')
-          let line = ''
-          for (const word of words) {
-            if ((line + word).length > 70) {
-              writeAiLine(`${white}${line.trim()}${r}`)
-              line = ''
-            }
-            line += word + ' '
-          }
-          if (line.trim()) writeAiLine(`${white}${line.trim()}${r}`)
+          term.writeln(`   ${white}${result.content}${r}`)
           term.writeln('')
-          aiProcessing = false
           resetPromptClean()
         }
       } catch (err) {
-        writeAiError(`failed: ${err.message}`)
-        term.writeln('')
-        aiProcessing = false
+        writeAiError(`Query failed: ${err.message}`)
         resetPromptClean()
+      } finally {
+        aiProcessing = false
       }
     }
 
@@ -338,10 +351,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return
       }
 
-      // If AI is processing, ignore all input
-      if (aiProcessing) {
-        return
-      }
+      // If AI is thinking, ignore input
+      if (aiProcessing) return
 
       const code = data.charCodeAt(0)
 
@@ -370,17 +381,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Use trimStart so any accidental leading spaces don't bypass the check
         const input = lineBuffer.trimStart()
-        lineBuffer = ''
 
         if (input.startsWith('- ')) {
           const prompt = input.slice(2).trim()
-          term.writeln('')  // move to next line
-
+          lineBuffer = ''
+          term.writeln('')
+          
           if (!prompt) {
             resetPromptClean()
             return
           }
-
           processAiQuery(prompt)
         } else if (input === '-') {
           // Just a lone dash, treat as empty AI query
