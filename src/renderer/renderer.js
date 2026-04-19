@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
       cursorBlink: true,
       cursorStyle: 'bar',
       cursorWidth: 1.5,
-      fontSize: 12,
+      fontSize: 16,
       fontFamily: '"CaskaydiaCove NF", "JetBrains Mono NF", "JetBrains Mono", monospace',
       fontWeight: '400',
       fontWeightBold: '600',
@@ -50,12 +50,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const platform = window.krit.platform
     const platformNames = { linux: 'Linux', win32: 'Windows', darwin: 'macOS' }
 
-    const statusPlatform = document.getElementById('statusbar-platform')
-    if (statusPlatform) statusPlatform.textContent = platformNames[platform] || platform
-
-    const statusShell = document.getElementById('statusbar-shell')
-    if (statusShell) statusShell.textContent = 'bash'
-
     // --- Color helpers ---
     const g = (code) => `\x1b[38;5;${code}m`
     const r = '\x1b[0m'
@@ -79,16 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const logoLines = [
-      `  ${accent} ___  __  _______   ___  _________ ${r}`,
-      `  ${accent}|_  |/ / |_   __ \\ |_  ||  _   _  |${r}`,
-      `  ${accent}  | ' /    | |__) |  | | |_/ | | \\_|${r}`,
-      `  ${accent}  |  <     |  __ /   | |     | |    ${r}`,
-      `  ${accent} _| | \\ \\_ _| |  \\_ _| |_   _| |_   ${r}`,
-      `  ${accent}|____||___|____| |___|_____| |_____|  ${r}`,
-      '                                         ',
-      '                                         ',
-      '                                         ',
-      '                                         '
+      `     ${accent}__        _ __${r}`,
+      `    ${accent}/ /__  ___(_) /_${r}`,
+      `   ${accent}/ //_/ / __/ / __/${r}`,
+      `  ${accent}/ ,<   / / / / /_ ${r}`,
+      ` ${accent}/_/|_| /_/ /_/\__/ ${r}`
     ]
 
     const boxLines = [
@@ -105,20 +94,10 @@ document.addEventListener('DOMContentLoaded', () => {
     ]
 
     term.writeln('')
-    for (let i = 0; i < Math.max(logoLines.length, boxLines.length); i++) {
-      const left = logoLines[i] || '                                         '
-      const right = boxLines[i] || ''
-      term.writeln(`     ${left} ${right}`)
-    }
+    logoLines.forEach(line => term.writeln(line))
     term.writeln('')
-
-    // --- Clock ---
-    const clock = document.getElementById('clock')
-    const tick = () => {
-      clock.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }
-    tick()
-    setInterval(tick, 1000)
+    boxLines.forEach(line => term.writeln(`     ${line}`))
+    term.writeln('')
 
     // --- PTY resize ---
     window.krit.ptyResize(term.cols, term.rows)
@@ -144,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.krit.ptyResize(term.cols, term.rows)
       } else if (e.key === '0') {
         e.preventDefault()
-        term.options.fontSize = 12
+        term.options.fontSize = 16
         fitAddon.fit()
         window.krit.ptyResize(term.cols, term.rows)
       }
@@ -196,8 +175,6 @@ document.addEventListener('DOMContentLoaded', () => {
         outputTimer = setTimeout(flushOutputCapture, 800)
       }
     })
-
-    // --- Input handling ---
 
     const writeAiLine = (text) => {
       term.writeln(`   ${accent}◈${r}  ${text}`)

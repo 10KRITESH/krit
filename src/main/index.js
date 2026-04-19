@@ -25,8 +25,8 @@ const createWindow = () => {
         minWidth: 600,
         minHeight: 400,
         frame: false, // Back to sleek borderless!
-        transparent: false,
-        backgroundColor: '#0d0e12',
+        transparent: true,
+        backgroundColor: '#00000000',
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,

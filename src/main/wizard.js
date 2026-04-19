@@ -67,10 +67,10 @@ function finish() {
     const bash = spawn(shell, ['--norc', '--noprofile'], {
         stdio: 'inherit',
         env: Object.assign({}, process.env, {
-             PS1: '\\n  \\[\\e[3m\\e[37m\\]◄ 0s \\[\\e[0m\\]\\[\\e[1;3;33m\\]◎\\[\\e[0m\\] ',
              TERM: 'xterm-256color',
              HISTCONTROL: 'ignoreboth',
-             SHELL: '/bin/bash'
+             SHELL: '/bin/bash',
+             PROMPT_COMMAND: 'eval "$(starship init bash)"'
         })
     })
 

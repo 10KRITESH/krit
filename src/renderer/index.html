@@ -24,7 +24,7 @@
     .window {
       width: 100vw;
       height: 100vh;
-      background: #0d0e12;
+      background: rgba(13, 14, 18, 0.78);
       border: 0.5px solid rgba(255, 255, 255, 0.07);
       border-radius: 10px;
       display: flex;
@@ -32,88 +32,9 @@
       overflow: hidden;
     }
 
-    .titlebar {
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 20px;
-      -webkit-app-region: drag;
-      flex-shrink: 0;
-      border-bottom: 0.5px solid rgba(255, 255, 255, 0.05);
-    }
-
-    .titlebar-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      -webkit-app-region: no-drag;
-    }
-
-    .dot {
-      width: 11px;
-      height: 11px;
-      border-radius: 50%;
-      cursor: pointer;
-      border: none;
-      padding: 0;
-      opacity: 0.85;
-      transition: opacity 0.15s ease, transform 0.15s ease;
-    }
-
-    .dot:hover {
-      opacity: 1;
-      transform: scale(1.1);
-    }
-
-    .dot-close {
-      background: #E24B4A;
-    }
-
-    .dot-min {
-      background: #EF9F27;
-    }
-
-    .dot-max {
-      background: #5DCAA5;
-    }
-
-    .titlebar-center {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      pointer-events: none;
-    }
-
-    .titlebar-name {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      color: rgba(255, 255, 255, 0.2);
-      letter-spacing: 0.15em;
-      text-transform: lowercase;
-    }
-
-    .titlebar-dot {
-      width: 4px;
-      height: 4px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.12);
-    }
-
-    .titlebar-right {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 10px;
-      color: rgba(255, 255, 255, 0.18);
-      letter-spacing: 0.05em;
-      -webkit-app-region: no-drag;
-    }
-
     .terminal-container {
       flex: 1;
-      padding: 20px 24px 20px 24px;
+      padding: 25px;
       overflow: hidden;
       display: flex;
       flex-direction: column;
@@ -155,20 +76,6 @@
 
 <body>
   <div class="window">
-    <div class="titlebar">
-      <div class="titlebar-left">
-        <button class="dot dot-close" onclick="window.krit.closeWindow()"></button>
-        <button class="dot dot-min" onclick="window.krit.minimize()"></button>
-        <button class="dot dot-max" onclick="window.krit.maximize()"></button>
-      </div>
-      <div class="titlebar-center">
-        <span class="titlebar-name">krit</span>
-        <div class="titlebar-dot"></div>
-        <span class="titlebar-name" id="cwd-display">~</span>
-      </div>
-      <span class="titlebar-right" id="clock"></span>
-    </div>
-
     <div class="terminal-container">
       <div id="terminal"></div>
     </div>
