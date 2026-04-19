@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const term = new Terminal({
       cursorBlink: true,
       cursorStyle: 'bar',
-      cursorInactiveStyle: 'outline',
       cursorWidth: 1.5,
       fontSize: 16,
       fontFamily: '"CaskaydiaCove NF", "JetBrains Mono NF", "JetBrains Mono", monospace',
@@ -48,11 +47,11 @@ document.addEventListener('DOMContentLoaded', () => {
     fitAddon.fit()
     term.focus() // give terminal focus immediately
 
-    // Dynamically change cursor style on focus/blur to get the hollow slab effect
-    term.textarea.addEventListener('focus', () => {
+    // Dynamically change cursor style on window focus/blur to get the hollow slab effect
+    window.addEventListener('focus', () => {
       term.options.cursorStyle = 'bar'
     })
-    term.textarea.addEventListener('blur', () => {
+    window.addEventListener('blur', () => {
       term.options.cursorStyle = 'block'
     })
 
@@ -169,23 +168,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const isError = outputBuffer.match(/ERR!|Error:|command not found|failed to|No such file/i)
         
         if (isError) {
-          term.writeln('')
-          writeAiLine(`${dim}analyzing error...${r}`)
+          term.write(`\r\n   ${accent}◈${r}  ${dim}analyzing error...${r}`)
           try {
             const analysis = await window.krit.analyzeError(captureCommand, outputBuffer)
-            term.write('\x1b[1A\x1b[2K\r') // clear thinking line
 
             if (analysis && analysis.type === 'command') {
+              term.write('\x1b[2K\r') // clear analyzing error line
               term.writeln(`   ${yellow}💡 AI Hint:${r} ${white}${analysis.explanation || 'An error occurred'}${r}`)
               term.write(`      ${dim}└─ run \`${r}${accent}${analysis.content}${r}${dim}\` instead? [Y/n]${r} `)
               aiMode = analysis.safetyLevel || 'safe'
               pendingCommand = analysis.content
             } else if (analysis && analysis.content) {
+              term.write('\x1b[2K\r') // clear analyzing error line
               term.writeln(`   ${yellow}💡 AI Hint:${r} ${white}${analysis.content}${r}`)
               resetPromptClean()
+            } else {
+              // No analysis, clean up the line and move back up to prompt
+              term.write('\x1b[2K\r\x1b[1A')
             }
           } catch (err) {
-            term.write('\x1b[1A\x1b[2K\r') // clear thinking line
+            // Clean up the line and move back up on error
+            term.write('\x1b[2K\r\x1b[1A')
           }
         }
       }
