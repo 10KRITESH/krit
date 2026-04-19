@@ -93,6 +93,16 @@ ipcMain.handle('ai-query', async (_, message) => {
     return result
 })
 
+ipcMain.handle('analyze-error', async (_, { command, output }) => {
+    const result = await ai.analyzeError(command, output, currentCwd)
+    if (result && result.type === 'command') {
+        const level = safety.classify(result.content)
+        const warning = safety.getWarningMessage(result.content, level)
+        return { ...result, safetyLevel: level, safetyWarning: warning }
+    }
+    return result
+})
+
 // capture command output for AI session context
 ipcMain.on('command-output', (_, { command, output }) => {
     ai.addOutput(command, output)

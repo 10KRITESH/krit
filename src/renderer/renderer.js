@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const term = new Terminal({
       cursorBlink: true,
       cursorStyle: 'bar',
+      cursorInactiveStyle: 'outline',
       cursorWidth: 1.5,
       fontSize: 16,
       fontFamily: '"CaskaydiaCove NF", "JetBrains Mono NF", "JetBrains Mono", monospace',
@@ -45,6 +46,15 @@ document.addEventListener('DOMContentLoaded', () => {
     term.loadAddon(fitAddon)
     term.open(document.getElementById('terminal'))
     fitAddon.fit()
+    term.focus() // give terminal focus immediately
+
+    // Dynamically change cursor style on focus/blur to get the hollow slab effect
+    term.textarea.addEventListener('focus', () => {
+      term.options.cursorStyle = 'bar'
+    })
+    term.textarea.addEventListener('blur', () => {
+      term.options.cursorStyle = 'block'
+    })
 
     // --- Platform info ---
     const platform = window.krit.platform
@@ -135,7 +145,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let aiMode = false       // waiting for y/n confirmation
     let aiProcessing = false // AI query in progress
     let pendingCommand = ''
-    let suppressPty = false  // suppress PTY output during AI prompt reset
 
     // --- Output capture for AI session context ---
     let outputBuffer = ''
@@ -152,9 +161,33 @@ document.addEventListener('DOMContentLoaded', () => {
       outputTimer = setTimeout(flushOutputCapture, 800)
     }
 
-    const flushOutputCapture = () => {
+    const flushOutputCapture = async () => {
       if (capturing && captureCommand && outputBuffer) {
         window.krit.sendCommandOutput(captureCommand, outputBuffer)
+
+        // Simple heuristic to detect errors
+        const isError = outputBuffer.match(/ERR!|Error:|command not found|failed to|No such file/i)
+        
+        if (isError) {
+          term.writeln('')
+          writeAiLine(`${dim}analyzing error...${r}`)
+          try {
+            const analysis = await window.krit.analyzeError(captureCommand, outputBuffer)
+            term.write('\x1b[1A\x1b[2K\r') // clear thinking line
+
+            if (analysis && analysis.type === 'command') {
+              term.writeln(`   ${yellow}💡 AI Hint:${r} ${white}${analysis.explanation || 'An error occurred'}${r}`)
+              term.write(`      ${dim}└─ run \`${r}${accent}${analysis.content}${r}${dim}\` instead? [Y/n]${r} `)
+              aiMode = analysis.safetyLevel || 'safe'
+              pendingCommand = analysis.content
+            } else if (analysis && analysis.content) {
+              term.writeln(`   ${yellow}💡 AI Hint:${r} ${white}${analysis.content}${r}`)
+              resetPromptClean()
+            }
+          } catch (err) {
+            term.write('\x1b[1A\x1b[2K\r') // clear thinking line
+          }
+        }
       }
       capturing = false
       captureCommand = ''
@@ -165,7 +198,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Shell output → xterm ---
     window.krit.onPtyData((data) => {
-      if (suppressPty) return
       term.write(data)
 
       // Collect output for AI context
@@ -186,17 +218,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Brief PTY output suppression to hide prompt redraw after Ctrl+C
-    let suppressTimer = null
-    
     const resetPromptClean = () => {
-      // Send Enter to get a fresh prompt without Ctrl+C noise
-      suppressPty = true
+      // Send Enter to get a fresh prompt
       window.krit.ptyInput('\n')
-      // Allow PTY output again after prompt settles
-      if (suppressTimer) clearTimeout(suppressTimer)
-      suppressTimer = setTimeout(() => {
-        suppressPty = false
-      }, 200)
     }
 
     const handleAiConfirm = (key) => {
@@ -263,14 +287,16 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const result = await window.krit.aiQuery(prompt)
 
+        // Clear the "thinking..." line
+        term.write('\x1b[1A\x1b[2K\r')
+
         if (result.type === 'command') {
           const level = result.safetyLevel || 'safe'
           const warning = result.safetyWarning || ''
 
-          term.writeln('')
-
           // draw the right card based on safety level
           if (level === 'danger') {
+            term.writeln('')
             term.writeln(`   \x1b[38;2;249;115;134m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m`)
             term.writeln(`   ${red}DANGEROUS COMMAND${r}`)
             term.writeln(`   ${warning}`)
@@ -280,6 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
             term.writeln('')
             term.write(`   ${red}Type 'yes' to execute${r}: `)
           } else if (level === 'warning') {
+            term.writeln('')
             term.writeln(`   \x1b[38;2;239;159;39m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m`)
             term.writeln(`   \x1b[38;2;239;159;39mSENSITIVE COMMAND\x1b[0m`)
             term.writeln(`   ${warning}`)
@@ -289,8 +316,8 @@ document.addEventListener('DOMContentLoaded', () => {
             term.writeln('')
             term.write(`   ${accent}run it? (y/n)${r} `)
           } else {
-            term.writeln(`   ${muted}suggested:${r}  ${accent}${result.content}${r}`)
-            term.write(`   ${accent}run it? (y/n)${r} `)
+            term.writeln(`   ${accent}◈${r}  ${accent}${result.content}${r}`)
+            term.write(`      ${dim}└─ execute? [Y/n]${r} `)
           }
 
           aiMode = level
@@ -298,7 +325,19 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           // info/answer type
           term.writeln('')
-          term.writeln(`   ${white}${result.content}${r}`)
+          
+          // Basic markdown to ANSI parser
+          let formattedContent = result.content
+            .replace(/\*\*(.*?)\*\*/g, '\x1b[1m$1\x1b[22m') // bold
+            .replace(/`(.*?)`/g, `${accent}$1${r}${white}`) // inline code
+            .split('\n')
+            .map(line => {
+                if (line.trim().startsWith('```')) return `${dim}${line}${r}`
+                return `   ${white}${line}${r}`
+            })
+            .join('\r\n')
+
+          term.writeln(formattedContent)
           term.writeln('')
           resetPromptClean()
         }
@@ -380,6 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
             startOutputCapture(input.trim())
           }
           window.krit.ptyInput(data)
+          lineBuffer = '' // Reset buffer after sending normal command
         }
         return
       }
