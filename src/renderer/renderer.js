@@ -73,11 +73,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const logoLines = [
-      `     ${white}______           __          __  _       ${r}`,
-      `    ${white}/ ____/___ ____  / /__  _____/ /_(_)___ _ ${r}`,
-      `   ${white}/ /   / __ \`/ _ \\/ / _ \\/ ___/ __/ / __ \`/ ${r}`,
-      `  ${white}/ /___/ /_/ /  __/ /  __(__  ) /_/ / /_/ /  ${r}`,
-      `  ${white}\\____/\\__,_/\\___/_/\\___/____/\\__/_/\\__,_/   ${r}`
+      `          ${white}  __           .__  __   ${r}`,
+      `          ${white}|  | _________|__|/  |_ ${r}`,
+      `          ${white}|  |/ /\\_  __ \\  \\   __\\${r}`,
+      `          ${white}|    <  |  | \\/  ||  |  ${r}`,
+      `          ${white}|__|_ \\ |__|  |__||__|  ${r}`,
+      `          ${white}     \\/                 ${r}`
     ]
 
     const boxLines = [
@@ -89,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
       `     ${padBox('pkgs', '', '1317')}`,
       `     ${padBox('user', '', os.username)}`,
       `     ${padBox('hname', '', os.hostname)}`,
-      `     ${padBox('distro', '󰻀', platform === 'linux' ? 'CachyOS' : (platformNames[platform] || platform))}`,
+      `     ${padBox('distro', '󰻀', platform === 'linux' ? 'krit' : (platformNames[platform] || platform))}`,
       `     ${white}╰───────────────────────────────────╯${r}`
     ]
 
