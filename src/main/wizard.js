@@ -6,102 +6,132 @@ const path = require('path')
 
 const isInitialSetup = process.argv.includes('--setup')
 
-// Set raw mode for clean input handling in PTY
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-})
-
+// Colors and Styles
 const r = '\x1b[0m'
+const b = '\x1b[1m'
 const accent = '\x1b[38;2;93;202;165m'
 const dim = '\x1b[2m'
 const white = '\x1b[37m'
 const yellow = '\x1b[33m'
+const cyan = '\x1b[36m'
+const bgAccent = '\x1b[48;2;93;202;165m\x1b[30m'
 
 const clear = () => process.stdout.write('\x1b[2J\x1b[0;0H')
-
-if (isInitialSetup) {
-    console.log(`\r\n${accent}✨ Welcome to KRIT. Let's get you set up.${r}\r\n`)
-} else {
-    clear()
-    console.log(`\r\n${accent}⚙️  KRIT Configuration Menu${r}\r\n`)
-}
+const hideCursor = () => process.stdout.write('\x1b[?25l')
+const showCursor = () => process.stdout.write('\x1b[?25h')
 
 const providers = [
-    { name: 'ollama', desc: 'Local, free, privacy-focused', base: 'http://127.0.0.1:11434', defaultModel: 'qwen2.5:7b' },
-    { name: 'groq', desc: 'Blazing fast, free tier available', base: 'https://api.groq.com/openai/v1', defaultModel: 'llama-3.3-70b-versatile' },
-    { name: 'openai', desc: 'Industry standard (GPT-4o, etc.)', base: 'https://api.openai.com/v1', defaultModel: 'gpt-4o' },
-    { name: 'custom', desc: 'Any OpenAI-compatible endpoint', base: '', defaultModel: '' }
+    { name: 'Ollama', value: 'ollama', desc: 'Local, free, privacy-focused', base: 'http://127.0.0.1:11434', defaultModel: 'qwen2.5:7b' },
+    { name: 'Groq', value: 'groq', desc: 'Blazing fast, free tier available', base: 'https://api.groq.com/openai/v1', defaultModel: 'llama-3.3-70b-versatile' },
+    { name: 'OpenAI', value: 'openai', desc: 'Industry standard (GPT-4o, etc.)', base: 'https://api.openai.com/v1', defaultModel: 'gpt-4o' },
+    { name: 'Custom', value: 'custom', desc: 'Any OpenAI-compatible endpoint', base: '', defaultModel: '' }
 ]
 
-console.log(`${white}Select your AI provider:${r}\r`)
-providers.forEach((p, i) => {
-    console.log(`  ${accent}${i + 1}.${r} ${p.name} ${dim}(${p.desc})${r}\r`)
-})
-console.log('')
+let selectedIndex = 0
 
-rl.question(`Enter choice (1-${providers.length}): `, (answer) => {
-    const idx = parseInt(answer.trim()) - 1
-    if (isNaN(idx) || idx < 0 || idx >= providers.length) {
-        console.log(`${yellow}Invalid choice. Defaulting to Ollama.${r}\r`)
-        setupProvider(providers[0])
-    } else {
-        setupProvider(providers[idx])
-    }
-})
+function renderMenu() {
+    clear()
+    console.log(`\r\n  ${accent}${b}KRIT${r} ${dim}— AI Terminal Configuration${r}\r\n`)
+    console.log(`  ${white}Select your AI provider:${r}\r\n`)
 
-function setupProvider(provider) {
-    settings.set('provider', provider.name)
-    
-    if (provider.name === 'custom') {
-        rl.question(`\r\nEnter Base URL: `, (base) => {
-            settings.set('baseUrl', base.trim())
-            askKey(provider)
-        })
-    } else {
-        settings.set('baseUrl', provider.base)
-        if (provider.name === 'ollama') {
-            askModel(provider)
-        } else {
-            askKey(provider)
-        }
-    }
+    providers.forEach((p, i) => {
+        const isSelected = i === selectedIndex
+        const prefix = isSelected ? `${accent}❯${r} ` : '  '
+        const line = isSelected ? `${bgAccent} ${p.name.padEnd(8)} ${r}` : `${white}${p.name.padEnd(8)}${r}`
+        console.log(`${prefix}${line} ${dim}${p.desc}${r}\r`)
+    })
+
+    console.log(`\r\n  ${dim}Use ↑/↓ arrows and Enter to select${r}\r`)
 }
 
-function askKey(provider) {
-    const keyLabel = provider.name === 'openai' ? 'OpenAI API Key' : 
-                     provider.name === 'groq' ? 'Groq API Key' : 'API Key'
-    
-    rl.question(`\r\nEnter ${keyLabel}: `, (key) => {
-        if (key.trim()) {
-            settings.set('apiKey', key.trim())
+async function startTUI() {
+    hideCursor()
+    renderMenu()
+
+    readline.emitKeypressEvents(process.stdin)
+    if (process.stdin.isTTY) process.stdin.setRawMode(true)
+
+    return new Promise((resolve) => {
+        const onKey = (str, key) => {
+            if (key.name === 'up') {
+                selectedIndex = (selectedIndex - 1 + providers.length) % providers.length
+                renderMenu()
+            } else if (key.name === 'down') {
+                selectedIndex = (selectedIndex + 1) % providers.length
+                renderMenu()
+            } else if (key.name === 'return') {
+                process.stdin.setRawMode(false)
+                process.stdin.removeListener('keypress', onKey)
+                showCursor()
+                resolve(providers[selectedIndex])
+            } else if (key.ctrl && key.name === 'c') {
+                showCursor()
+                process.exit(0)
+            }
         }
-        askModel(provider)
+        process.stdin.on('keypress', onKey)
     })
 }
 
-function askModel(provider) {
+async function run() {
+    const provider = await startTUI()
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+    
+    console.log(`\r\n  ${accent}Selected:${r} ${provider.name}\r\n`)
+    settings.set('provider', provider.value)
+
+    if (provider.value === 'custom') {
+        const base = await ask(rl, `  Enter Base URL: `, '')
+        settings.set('baseUrl', base)
+        await handleKeyAndModel(rl, provider)
+    } else {
+        settings.set('baseUrl', provider.base)
+        if (provider.value === 'ollama') {
+            await askModel(rl, provider)
+        } else {
+            await handleKeyAndModel(rl, provider)
+        }
+    }
+    
+    rl.close()
+    finish()
+}
+
+async function handleKeyAndModel(rl, provider) {
+    const keyLabel = provider.value === 'openai' ? 'OpenAI API Key' : 
+                     provider.value === 'groq' ? 'Groq API Key' : 'API Key'
+    
+    const key = await ask(rl, `  Enter ${keyLabel}: `, '')
+    if (key) settings.set('apiKey', key)
+    
+    await askModel(rl, provider)
+}
+
+async function askModel(rl, provider) {
     const modelLabel = provider.defaultModel ? 
-                       `Model name (default: ${provider.defaultModel})` : 
+                       `Model name (or type 'default' for ${cyan}${provider.defaultModel}${white})` : 
                        'Model name'
     
-    rl.question(`\r\nEnter ${modelLabel}: `, (mod) => {
-        const input = mod.trim().toLowerCase()
-        const model = (input === '' || input === 'default') ? provider.defaultModel : mod.trim()
-        
-        if (model) {
-            settings.set('model', model)
-        }
-        finish()
+    const mod = await ask(rl, `  Enter ${modelLabel}: `, '')
+    const input = mod.trim().toLowerCase()
+    const model = (input === '' || input === 'default') ? provider.defaultModel : mod.trim()
+    
+    if (model) settings.set('model', model)
+}
+
+function ask(rl, question, defaultValue) {
+    return new Promise((resolve) => {
+        rl.question(`${white}${question}${r}`, (answer) => {
+            resolve(answer.trim() || defaultValue)
+        })
     })
 }
 
 function finish() {
-    console.log(`\r\n${accent}✔ Configuration saved!${r}\r`)
+    console.log(`\r\n  ${accent}✔ Configuration saved!${r}\r`)
     
     if (isInitialSetup) {
-        console.log(`${dim}You can always change settings by typing "krit-config" in the terminal.${r}\r\n`)
-        rl.close()
+        console.log(`  ${dim}You can always change settings by typing "krit-config" in the terminal.${r}\r\n`)
 
         const shell = '/bin/bash'
         const tmpRc = path.join(os.tmpdir(), '.krit_bashrc')
@@ -118,8 +148,9 @@ function finish() {
             process.exit(code)
         })
     } else {
-        console.log(`${dim}Settings will take effect for new AI queries.${r}\r\n`)
-        rl.close()
+        console.log(`  ${dim}Settings will take effect for new AI queries.${r}\r\n`)
         process.exit(0)
     }
 }
+
+run()

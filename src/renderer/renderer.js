@@ -143,7 +143,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let lineBuffer = ''
     let aiMode = false       // waiting for y/n confirmation
     let aiProcessing = false // AI query in progress
+    let isChatting = false   // immersive chat conversation mode
     let pendingCommand = ''
+
+    // --- AI History ---
+    let aiHistory = []
+    let aiHistoryIndex = -1
+    let currentInputSave = ''
 
     // --- Output capture for AI session context ---
     let outputBuffer = ''
@@ -172,23 +178,21 @@ document.addEventListener('DOMContentLoaded', () => {
           try {
             const analysis = await window.krit.analyzeError(captureCommand, outputBuffer)
 
+            // Clear the "analyzing error..." line
+            term.write('\x1b[2K\r')
+
             if (analysis && analysis.type === 'command') {
-              term.write('\x1b[2K\r') // clear analyzing error line
               term.writeln(`   ${yellow}💡 AI Hint:${r} ${white}${analysis.explanation || 'An error occurred'}${r}`)
               term.write(`      ${dim}└─ run \`${r}${accent}${analysis.content}${r}${dim}\` instead? [Y/n]${r} `)
               aiMode = analysis.safetyLevel || 'safe'
               pendingCommand = analysis.content
             } else if (analysis && analysis.content) {
-              term.write('\x1b[2K\r') // clear analyzing error line
               term.writeln(`   ${yellow}💡 AI Hint:${r} ${white}${analysis.content}${r}`)
               resetPromptClean()
             } else {
-              // No analysis, clean up the line and move back up to prompt
-              term.write('\x1b[2K\r')
               resetPromptClean()
             }
           } catch (err) {
-            // Clean up the line and move back up on error
             term.write('\x1b[2K\r')
             resetPromptClean()
           }
@@ -216,6 +220,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const writeAiLine = (text) => {
       term.writeln(`   ${accent}◈${r}  ${text}`)
+    }
+
+    const writeAiChatPrompt = () => {
+      term.write(`   ${muted}◈ (Chat Mode)${r}  ${white}`)
     }
 
     const writeAiError = (text) => {
@@ -265,9 +273,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // normal y/n for safe and warning
-      if (key === 'y' || key === 'Y') {
+      // Default to 'y' on Enter
+      if (key === 'y' || key === 'Y' || key === '\r' || key === '\n') {
         const cmd = pendingCommand
-        term.writeln('y')
+        if (key === '\r' || key === '\n') term.write('y')
         term.writeln('')
         aiMode = false
         pendingCommand = ''
@@ -287,7 +296,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const processAiQuery = async (prompt) => {
       aiProcessing = true
+      isChatting = false // Reset chat mode while thinking
       writeAiLine(`${dim}thinking...${r}`)
+
+      // Save to history
+      if (prompt && (!aiHistory.length || aiHistory[0] !== prompt)) {
+        aiHistory.unshift(prompt)
+      }
+      aiHistoryIndex = -1
+      currentInputSave = ''
 
       try {
         const result = await window.krit.aiQuery(prompt)
@@ -331,20 +348,52 @@ document.addEventListener('DOMContentLoaded', () => {
           // info/answer type
           term.writeln('')
           
-          // Basic markdown to ANSI parser
-          let formattedContent = result.content
-            .replace(/\*\*(.*?)\*\*/g, '\x1b[1m$1\x1b[22m') // bold
-            .replace(/`(.*?)`/g, `${accent}$1${r}${white}`) // inline code
-            .split('\n')
-            .map(line => {
-                if (line.trim().startsWith('```')) return `${dim}${line}${r}`
-                return `   ${white}${line}${r}`
-            })
-            .join('\r\n')
+          // Helper for wrapping text to terminal width
+          const wrapText = (text, width) => {
+            const lines = []
+            let currentLine = ''
+            const words = text.split(' ')
+            
+            for (const word of words) {
+              // Strip ANSI codes for length calculation
+              const cleanWord = word.replace(/\x1b\[[0-9;]*m/g, '')
+              const cleanLine = currentLine.replace(/\x1b\[[0-9;]*m/g, '')
+              
+              if (cleanLine.length + cleanWord.length + 1 > width) {
+                lines.push(currentLine)
+                currentLine = word
+              } else {
+                currentLine = currentLine ? `${currentLine} ${word}` : word
+              }
+            }
+            if (currentLine) lines.push(currentLine)
+            return lines
+          }
 
-          term.writeln(formattedContent)
+          // Basic markdown to ANSI parser
+          const lines = result.content.split('\n')
+          const formattedLines = []
+
+          for (let line of lines) {
+            let formatted = line
+              .replace(/\*\*(.*?)\*\*/g, '\x1b[1m$1\x1b[22m') // bold
+              .replace(/`(.*?)`/g, `${accent}$1${r}${white}`) // inline code
+
+            if (line.trim().startsWith('```')) {
+              formattedLines.push(`   ${dim}${formatted}${r}`)
+            } else {
+              // Wrap the line content (subtracting indentation)
+              const wrapped = wrapText(formatted, term.cols - 10)
+              wrapped.forEach(w => formattedLines.push(`   ${white}${w}${r}`))
+            }
+          }
+
+          term.writeln(formattedLines.join('\r\n'))
           term.writeln('')
-          resetPromptClean()
+          
+          // ENTER CHAT MODE
+          isChatting = true
+          writeAiChatPrompt()
         }
       } catch (err) {
         writeAiError(`Query failed: ${err.message}`)
@@ -358,9 +407,41 @@ document.addEventListener('DOMContentLoaded', () => {
     const isAiPrefix = (buf) => buf.trimStart().startsWith('-')
 
     term.onData((data) => {
-      // Escape sequences (arrow keys, etc) — always forward to PTY
+      // Escape sequences (arrow keys, etc)
       if (data.charCodeAt(0) === 27 && data.length > 1) {
         if (!aiMode && !aiProcessing) {
+          // Check for up/down arrows when in AI mode or starting with '-'
+          const isAi = isChatting || lineBuffer.trimStart().startsWith('-')
+          
+          if (isAi) {
+            if (data === '\x1b[A') { // Up arrow
+              if (aiHistoryIndex === -1) currentInputSave = lineBuffer
+              
+              if (aiHistoryIndex < aiHistory.length - 1) {
+                aiHistoryIndex++
+                // Clear current line on terminal
+                for (let i = 0; i < lineBuffer.length; i++) term.write('\b \b')
+                lineBuffer = (isChatting ? '' : '- ') + aiHistory[aiHistoryIndex]
+                term.write(lineBuffer)
+              }
+              return
+            } else if (data === '\x1b[B') { // Down arrow
+              if (aiHistoryIndex > -1) {
+                aiHistoryIndex--
+                // Clear current line
+                for (let i = 0; i < lineBuffer.length; i++) term.write('\b \b')
+                
+                if (aiHistoryIndex === -1) {
+                  lineBuffer = currentInputSave
+                } else {
+                  lineBuffer = (isChatting ? '' : '- ') + aiHistory[aiHistoryIndex]
+                }
+                term.write(lineBuffer)
+              }
+              return
+            }
+          }
+
           lineBuffer = ''  // arrow keys break our buffer tracking
           window.krit.ptyInput(data)
         }
@@ -380,18 +461,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Ctrl+C
       if (data === '\x03') {
+        const wasChatting = isChatting
         lineBuffer = ''
         aiMode = false
         aiProcessing = false
+        isChatting = false
         pendingCommand = ''
-        window.krit.ptyInput(data)
+        
+        if (wasChatting) {
+          term.writeln('')
+          resetPromptClean()
+        } else {
+          window.krit.ptyInput(data)
+        }
         return
       }
 
       // Ctrl+U (clear line) — reset lineBuffer
       if (data === '\x15') {
-        lineBuffer = ''
-        window.krit.ptyInput(data)
+        if (isChatting) {
+          for (let i = 0; i < lineBuffer.length; i++) term.write('\b \b')
+          lineBuffer = ''
+        } else {
+          lineBuffer = ''
+          window.krit.ptyInput(data)
+        }
         return
       }
 
@@ -400,6 +494,19 @@ document.addEventListener('DOMContentLoaded', () => {
         // Capture everything before the newline into the buffer
         const parts = data.split(/[\r\n]+/)
         lineBuffer += parts[0]
+
+        if (isChatting) {
+          const prompt = lineBuffer.trim()
+          lineBuffer = ''
+          term.writeln('')
+          if (!prompt) {
+            isChatting = false
+            resetPromptClean()
+            return
+          }
+          processAiQuery(prompt)
+          return
+        }
 
         // Use trimStart so any accidental leading spaces don't bypass the check
         const input = lineBuffer.trimStart()
@@ -432,7 +539,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Backspace
       if (code === 127) {
         if (lineBuffer.length > 0) {
-          const wasInAiPrefix = isAiPrefix(lineBuffer)
+          const wasInAiPrefix = isChatting || isAiPrefix(lineBuffer)
           lineBuffer = lineBuffer.slice(0, -1)
 
           if (wasInAiPrefix) {
@@ -444,9 +551,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return
       }
 
-      // Tab — only forward to PTY if not in AI prefix mode
+      // Tab — only forward to PTY if not in AI mode
       if (data === '\t') {
-        if (!isAiPrefix(lineBuffer)) {
+        if (!isChatting && !isAiPrefix(lineBuffer)) {
           window.krit.ptyInput(data)
         }
         return
@@ -455,8 +562,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // All other printable input
       lineBuffer += data
 
-      if (isAiPrefix(lineBuffer)) {
-        // AI prefix mode — echo locally only, don't send to shell
+      if (isChatting || isAiPrefix(lineBuffer)) {
+        // AI mode — echo locally only
         term.write(data)
       } else {
         // Normal — send to shell

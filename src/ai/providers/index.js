@@ -23,9 +23,9 @@ const getProvider = () => {
     }
 }
 
-const ask = async (userMessage, cwd, history) => {
+const ask = async (userMessage, cwd, history, fileList = []) => {
     const activeProvider = getProvider()
-    return await activeProvider.ask(userMessage, cwd, history)
+    return await activeProvider.ask(userMessage, cwd, history, fileList)
 }
 
 module.exports = { ask }

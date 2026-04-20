@@ -20,8 +20,8 @@ const getClient = () => {
     return groqClient
 }
 
-const ask = async (userMessage, cwd, history = []) => {
-    const systemPrompt = buildSystemPrompt(cwd || process.env.HOME)
+const ask = async (userMessage, cwd, history = [], fileList = []) => {
+    const systemPrompt = buildSystemPrompt(cwd || process.env.HOME, fileList)
 
     const messages = [
         { role: 'system', content: systemPrompt },
@@ -37,7 +37,10 @@ const ask = async (userMessage, cwd, history = []) => {
 
         const raw = response.choices[0]?.message?.content || ''
 
-        let cleaned = raw.trim()
+        // Try to find any JSON-looking structure in the text
+        const jsonMatch = raw.match(/\{[\s\S]*\}/)
+        let cleaned = jsonMatch ? jsonMatch[0] : raw.trim()
+
         if (cleaned.startsWith('```')) {
             cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
         }
@@ -50,8 +53,9 @@ const ask = async (userMessage, cwd, history = []) => {
         } catch {
             // Fallback for badly escaped backslashes (e.g. SEM\ VI) and raw newlines
             try {
-                let fixed = cleaned.replace(/(?<!\\)\\(?!["\\/bfnrt])/g, '\\\\')
-                fixed = fixed.replace(/\n/g, '\\n')
+                let fixed = cleaned
+                    .replace(/(?<!\\)\\(?!["\\/bfnrt])/g, '\\\\')
+                    .replace(/\n/g, '\\n')
                 const parsed = JSON.parse(fixed)
                 if (parsed.type && parsed.content) {
                     return { type: parsed.type, content: parsed.content }
@@ -60,7 +64,6 @@ const ask = async (userMessage, cwd, history = []) => {
                 // Proceed to chat fallback
             }
         }
-
         return { type: 'chat', content: raw || 'No response from Groq.' }
     } catch (err) {
         throw new Error(`Groq API Error: ${err.message}`)

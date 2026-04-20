@@ -58,8 +58,8 @@ const ollamaRequest = (payload) => {
  * @param {string} cwd - Current working directory
  * @param {Array} history - Full session history array of { role, content } objects
  */
-const ask = async (userMessage, cwd, history = []) => {
-    const systemPrompt = buildSystemPrompt(cwd || process.env.HOME)
+const ask = async (userMessage, cwd, history = [], fileList = []) => {
+    const systemPrompt = buildSystemPrompt(cwd || process.env.HOME, fileList)
 
     // Build messages: system prompt + full session history
     const messages = [
@@ -78,8 +78,10 @@ const ask = async (userMessage, cwd, history = []) => {
 
     const raw = response?.message?.content || ''
 
-    // Try to parse the JSON response from the model
-    let cleaned = raw.trim()
+    // Try to find any JSON-looking structure in the text
+    const jsonMatch = raw.match(/\{[\s\S]*\}/)
+    let cleaned = jsonMatch ? jsonMatch[0] : raw.trim()
+
     if (cleaned.startsWith('```')) {
         cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
     }
@@ -90,10 +92,11 @@ const ask = async (userMessage, cwd, history = []) => {
             return { type: parsed.type, content: parsed.content }
         }
     } catch {
-        // Fallback for badly escaped backslashes (e.g. SEM\ VI) and raw newlines
+        // Handle potential escaping issues in the JSON content
         try {
-            let fixed = cleaned.replace(/(?<!\\)\\(?!["\\/bfnrt])/g, '\\\\')
-            fixed = fixed.replace(/\n/g, '\\n')
+            let fixed = cleaned
+                .replace(/(?<!\\)\\(?!["\\/bfnrt])/g, '\\\\')
+                .replace(/\n/g, '\\n')
             const parsed = JSON.parse(fixed)
             if (parsed.type && parsed.content) {
                 return { type: parsed.type, content: parsed.content }
