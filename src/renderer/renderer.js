@@ -150,6 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let aiMode = false       // waiting for y/n confirmation
     let aiProcessing = false // AI query in progress
     let isChatting = false   // immersive chat conversation mode
+    let shouldResumeChat = false // whether to return to chat after command executes
     let pendingCommand = ''
 
     // --- AI History ---
@@ -173,12 +174,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const flushOutputCapture = async () => {
+      let isWaitingForAiCommand = false
       if (capturing && captureCommand && outputBuffer) {
         window.krit.sendCommandOutput(captureCommand, outputBuffer)
 
         // Simple heuristic to detect errors
         const isError = outputBuffer.match(/ERR!|Error:|command not found|failed to|No such file/i)
-        
+
         if (isError) {
           term.write(`\r\n   ${accent}◈${r}  ${dim}analyzing error...${r}`)
           try {
@@ -192,15 +194,16 @@ document.addEventListener('DOMContentLoaded', () => {
               term.write(`      ${dim}└─ run \`${r}${accent}${analysis.content}${r}${dim}\` instead? [Y/n]${r} `)
               aiMode = analysis.safetyLevel || 'safe'
               pendingCommand = analysis.content
+              isWaitingForAiCommand = true
             } else if (analysis && analysis.content) {
               term.writeln(`   ${yellow}💡 AI Hint:${r} ${white}${analysis.content}${r}`)
-              resetPromptClean()
+              if (!shouldResumeChat) resetPromptClean()
             } else {
-              resetPromptClean()
+              if (!shouldResumeChat) resetPromptClean()
             }
           } catch (err) {
             term.write('\x1b[2K\r')
-            resetPromptClean()
+            if (!shouldResumeChat) resetPromptClean()
           }
         }
       }
@@ -209,6 +212,12 @@ document.addEventListener('DOMContentLoaded', () => {
       outputBuffer = ''
       if (outputTimer) clearTimeout(outputTimer)
       outputTimer = null
+
+      if (shouldResumeChat && !isWaitingForAiCommand) {
+        isChatting = true
+        shouldResumeChat = false
+        writeAiChatPrompt()
+      }
     }
 
     // --- Shell output → xterm ---
@@ -330,7 +339,13 @@ document.addEventListener('DOMContentLoaded', () => {
             term.writeln('')
             aiMode = false
             pendingCommand = ''
-            resetPromptClean()
+            if (shouldResumeChat) {
+              isChatting = true
+              shouldResumeChat = false
+              writeAiChatPrompt()
+            } else {
+              resetPromptClean()
+            }
           }
         } else if (key.charCodeAt(0) !== 127) {
           term.write(key)
@@ -363,7 +378,13 @@ document.addEventListener('DOMContentLoaded', () => {
         term.writeln('')
         aiMode = false
         pendingCommand = ''
-        resetPromptClean()
+        if (shouldResumeChat) {
+          isChatting = true
+          shouldResumeChat = false
+          writeAiChatPrompt()
+        } else {
+          resetPromptClean()
+        }
       }
     }
 
@@ -521,30 +542,32 @@ document.addEventListener('DOMContentLoaded', () => {
         if (result.type === 'command') {
           const level = result.safetyLevel || 'safe'
           const warning = result.safetyWarning || ''
+          const formattedContent = result.content.split(/\r?\n/).join('\r\n   ')
 
           if (level === 'danger') {
             drawHeader('⚠', 'DANGEROUS COMMAND', red)
             term.writeln(`   ${red}${warning}${r}`)
             term.writeln('')
-            term.writeln(`   ${white}${result.content}${r}`)
+            term.writeln(`   ${white}${formattedContent}${r}`)
             drawFooter()
             term.write(`   ${red}Type 'yes' to execute${r}: `)
           } else if (level === 'warning') {
             drawHeader('⚠', 'SENSITIVE COMMAND', yellow)
             term.writeln(`   ${yellow}${warning}${r}`)
             term.writeln('')
-            term.writeln(`   ${white}${result.content}${r}`)
+            term.writeln(`   ${white}${formattedContent}${r}`)
             drawFooter()
             term.write(`   ${accent}run it? (y/n)${r} `)
           } else {
             drawHeader('◈', 'COMMAND', accent)
-            term.writeln(`   ${white}${result.content}${r}`)
+            term.writeln(`   ${white}${formattedContent}${r}`)
             drawFooter()
             term.write(`   ${dim}execute? [Y/n]${r} `)
           }
 
           aiMode = level
           pendingCommand = result.content
+          if (wasChatting) shouldResumeChat = true
         } else {
           // info/answer type — show enhanced response
           drawHeader('◈', 'AI Response', accent)
@@ -579,11 +602,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!aiMode && !aiProcessing) {
           // Check for up/down arrows when in AI mode or starting with '-'
           const isAi = isChatting || lineBuffer.trimStart().startsWith('-')
-          
+
           if (isAi) {
             if (data === '\x1b[A') { // Up arrow
               if (aiHistoryIndex === -1) currentInputSave = lineBuffer
-              
+
               if (aiHistoryIndex < aiHistory.length - 1) {
                 aiHistoryIndex++
                 // Clear current line on terminal
@@ -597,7 +620,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 aiHistoryIndex--
                 // Clear current line
                 for (let i = 0; i < lineBuffer.length; i++) term.write('\b \b')
-                
+
                 if (aiHistoryIndex === -1) {
                   lineBuffer = currentInputSave
                 } else {
@@ -635,7 +658,8 @@ document.addEventListener('DOMContentLoaded', () => {
         isChatting = false
         pendingCommand = ''
         chatBannerShown = false
-        
+        shouldResumeChat = false
+
         if (wasChatting) {
           term.writeln('')
           term.writeln(`   ${dim}${italic}chat ended${r}`)
@@ -689,7 +713,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const prompt = input.slice(2).trim()
           lineBuffer = ''
           term.writeln('')
-          
+
           if (!prompt) {
             resetPromptClean()
             return
