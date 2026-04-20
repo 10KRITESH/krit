@@ -64,10 +64,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const r = '\x1b[0m'
     const bold = '\x1b[1m'
     const dim = '\x1b[2m'
+    const italic = '\x1b[3m'
+    const underline = '\x1b[4m'
     const muted = '\x1b[38;2;116;117;127m'
     const white = '\x1b[38;2;229;228;240m'
     const accent = '\x1b[38;2;122;162;247m'
     const red = '\x1b[38;2;249;115;134m'
+    const green = '\x1b[38;2;158;206;106m'
+    const yellow = '\x1b[38;2;224;175;104m'
+    const cyan = '\x1b[38;2;125;207;255m'
+    const purple = '\x1b[38;2;157;121;255m'
+    const pink = '\x1b[38;2;255;183;219m'
 
     // startup banner
     const { os } = window.krit
@@ -94,9 +101,8 @@ document.addEventListener('DOMContentLoaded', () => {
       `     ${white}╭───────────────────────────────────╮${r}`,
       `     ${padBox('kernel', '', os.release)}`,
       `     ${padBox('uptime', '', uptimeStr)}`,
-      `     ${padBox('shell', '', 'fish')}`,
+      `     ${padBox('shell', '', (os.shell || 'bash').split('/').pop())}`,
       `     ${padBox('mem', '', memStr)}`,
-      `     ${padBox('pkgs', '', '1317')}`,
       `     ${padBox('user', '', os.username)}`,
       `     ${padBox('hname', '', os.hostname)}`,
       `     ${padBox('distro', '󰻀', platform === 'linux' ? 'krit' : (platformNames[platform] || platform))}`,
@@ -223,24 +229,78 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const drawHeader = (icon, title, color = accent) => {
-      const width = Math.min(term.cols - 10, 80)
-      const horizontal = '━'.repeat(width - title.length - 5)
-      term.writeln(`\r\n   ${color}${icon}  ${bold}${title.toUpperCase()}${r} ${dim}${horizontal}${r}`)
+      const width = Math.min(term.cols - 10, 72)
+      const labelLen = title.length + 4
+      const tailLen = Math.max(0, width - labelLen)
+      const tail = '─'.repeat(tailLen)
+      term.writeln('')
+      term.writeln(`   ${color}${icon}${r}  ${color}${bold}${title.toUpperCase()}${r}  ${dim}${tail}${r}`)
+      term.writeln('')
     }
 
     const drawFooter = () => {
-      const width = Math.min(term.cols - 10, 80)
-      const horizontal = '─'.repeat(width)
-      term.writeln(`   ${dim}${horizontal}${r}`)
+      term.writeln('')
+    }
+
+    // Show the user's message as a styled chat bubble
+    const writeUserBubble = (text) => {
+      term.writeln('')
+      term.writeln(`   ${purple}❯${r}  ${dim}${italic}you${r}`)
+      // Wrap user text
+      const maxW = Math.min(term.cols - 12, 76)
+      const words = text.split(' ')
+      let line = ''
+      for (const word of words) {
+        if (line.length + word.length + 1 > maxW && line.length > 0) {
+          term.writeln(`      ${white}${line}${r}`)
+          line = word
+        } else {
+          line = line ? `${line} ${word}` : word
+        }
+      }
+      if (line) term.writeln(`      ${white}${line}${r}`)
+    }
+
+    // Chat mode entry banner
+    const writeChatBanner = () => {
+      term.writeln('')
+      term.writeln(`   ${accent}◈${r}  ${bold}${white}Chat mode${r}  ${dim}·  context preserved  ·  ${muted}Ctrl+C${dim} or empty ↵ to exit${r}`)
+    }
+
+    // Animated thinking spinner
+    let spinnerInterval = null
+    const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+    let spinnerIndex = 0
+
+    const startSpinner = () => {
+      spinnerIndex = 0
+      term.writeln('')
+      term.write(`   ${accent}${spinnerFrames[0]}${r}  ${dim}${italic}thinking...${r}`)
+      spinnerInterval = setInterval(() => {
+        spinnerIndex = (spinnerIndex + 1) % spinnerFrames.length
+        term.write(`\x1b[2K\r   ${accent}${spinnerFrames[spinnerIndex]}${r}  ${dim}${italic}thinking...${r}`)
+      }, 80)
+    }
+
+    const stopSpinner = () => {
+      if (spinnerInterval) {
+        clearInterval(spinnerInterval)
+        spinnerInterval = null
+      }
+      term.write('\x1b[2K\r')
     }
 
     const writeAiChatPrompt = () => {
-      drawHeader('󰭹', 'Your Message', muted)
-      term.write(`   ${accent}❯${r}  ${white}`)
+      term.writeln('')
+      const width = Math.min(term.cols - 10, 60)
+      const line = '─'.repeat(width)
+      term.writeln(`   ${dim}${line}${r}`)
+      term.writeln(`   ${accent}◈${r}  ${dim}${italic}your message${r}`)
+      term.write(`   ${accent}❯${r} ${white}`)
     }
 
     const writeAiError = (text) => {
-      term.writeln(`   ${red}◈${r}  ${text}`)
+      term.writeln(`   ${red}✖${r}  ${text}`)
     }
 
     // Brief PTY output suppression to hide prompt redraw after Ctrl+C
@@ -307,12 +367,144 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    // --- Improved markdown-to-ANSI renderer ---
+    const wrapText = (text, width) => {
+      const lines = []
+      let currentLine = ''
+      const words = text.split(' ')
+      for (const word of words) {
+        const cleanWord = word.replace(/\x1b\[[0-9;]*m/g, '')
+        const cleanLine = currentLine.replace(/\x1b\[[0-9;]*m/g, '')
+        if (cleanLine.length + cleanWord.length + 1 > width && cleanLine.length > 0) {
+          lines.push(currentLine)
+          currentLine = word
+        } else {
+          currentLine = currentLine ? `${currentLine} ${word}` : word
+        }
+      }
+      if (currentLine) lines.push(currentLine)
+      return lines
+    }
+
+    const renderMarkdown = (content) => {
+      const lines = content.split('\n')
+      const formattedLines = []
+      let inCodeBlock = false
+      let codeBlockLang = ''
+      const bar = `${muted}│${r}`
+
+      for (let line of lines) {
+        // Code block boundaries
+        if (line.trim().startsWith('```')) {
+          if (!inCodeBlock) {
+            inCodeBlock = true
+            codeBlockLang = line.trim().slice(3).trim()
+            const langLabel = codeBlockLang ? ` ${dim}${italic}${codeBlockLang}${r}` : ''
+            formattedLines.push(`   ${muted}╭${langLabel}${r}`)
+          } else {
+            inCodeBlock = false
+            codeBlockLang = ''
+            formattedLines.push(`   ${muted}╰${r}`)
+          }
+          continue
+        }
+
+        if (inCodeBlock) {
+          formattedLines.push(`   ${muted}│${r}  ${cyan}${line}${r}`)
+          continue
+        }
+
+        // Empty lines — keep the accent bar
+        if (line.trim() === '') {
+          formattedLines.push(`   ${bar}`)
+          continue
+        }
+
+        // Headings
+        const headingMatch = line.match(/^(#{1,3})\s+(.*)$/)
+        if (headingMatch) {
+          const level = headingMatch[1].length
+          const text = headingMatch[2]
+          if (level === 1) {
+            formattedLines.push(`   ${bar}  ${bold}${accent}${text}${r}`)
+          } else if (level === 2) {
+            formattedLines.push(`   ${bar}  ${bold}${white}${text}${r}`)
+          } else {
+            formattedLines.push(`   ${bar}  ${bold}${dim}${text}${r}`)
+          }
+          continue
+        }
+
+        // Blockquotes
+        if (line.trim().startsWith('> ')) {
+          const text = line.trim().slice(2)
+          const wrapped = wrapText(text, term.cols - 14)
+          wrapped.forEach(w => formattedLines.push(`   ${bar}  ${dim}${italic}${w}${r}`))
+          continue
+        }
+
+        // Bullet lists (-, *, •)
+        const bulletMatch = line.match(/^(\s*)[-*•]\s+(.*)$/)
+        if (bulletMatch) {
+          const indent = Math.min(Math.floor(bulletMatch[1].length / 2), 3)
+          let text = bulletMatch[2]
+            .replace(/\*\*(.*?)\*\*/g, `${bold}$1\x1b[22m`)
+            .replace(/\*(.*?)\*/g, `${italic}$1\x1b[23m`)
+            .replace(/`(.*?)`/g, `${cyan}$1${r}${white}`)
+          const pad = '  '.repeat(indent)
+          const bullet = indent === 0 ? `${accent}▸${r}` : `${muted}◦${r}`
+          const wrapped = wrapText(text, term.cols - 14 - indent * 2)
+          wrapped.forEach((w, i) => {
+            if (i === 0) formattedLines.push(`   ${bar} ${pad}${bullet} ${white}${w}${r}`)
+            else formattedLines.push(`   ${bar} ${pad}  ${white}${w}${r}`)
+          })
+          continue
+        }
+
+        // Numbered lists
+        const numberedMatch = line.match(/^(\s*)(\d+)\.\s+(.*)$/)
+        if (numberedMatch) {
+          let text = numberedMatch[3]
+            .replace(/\*\*(.*?)\*\*/g, `${bold}$1\x1b[22m`)
+            .replace(/\*(.*?)\*/g, `${italic}$1\x1b[23m`)
+            .replace(/`(.*?)`/g, `${cyan}$1${r}${white}`)
+          const num = numberedMatch[2]
+          const wrapped = wrapText(text, term.cols - 16)
+          wrapped.forEach((w, i) => {
+            if (i === 0) formattedLines.push(`   ${bar}  ${accent}${num}.${r} ${white}${w}${r}`)
+            else formattedLines.push(`   ${bar}     ${white}${w}${r}`)
+          })
+          continue
+        }
+
+        // Regular paragraph — apply inline formatting
+        let formatted = line
+          .replace(/\*\*(.*?)\*\*/g, `${bold}$1\x1b[22m`)
+          .replace(/\*(.*?)\*/g, `${italic}$1\x1b[23m`)
+          .replace(/`(.*?)`/g, `${cyan}$1${r}${white}`)
+
+        const wrapped = wrapText(formatted, term.cols - 12)
+        wrapped.forEach(w => formattedLines.push(`   ${bar}  ${white}${w}${r}`))
+      }
+
+      return formattedLines
+    }
+
+    // Track if we've shown the chat banner yet this session
+    let chatBannerShown = false
+
     const processAiQuery = async (prompt) => {
       aiProcessing = true
+      const wasChatting = isChatting
       isChatting = false // Reset chat mode while thinking
-      
-      // Spinner-like thinking line
-      term.write(`\r   ${accent}󱐋${r}  ${dim}thinking...${r}`)
+
+      // Show user message bubble in chat mode
+      if (wasChatting) {
+        writeUserBubble(prompt)
+      }
+
+      // Animated spinner
+      startSpinner()
 
       // Save to history
       if (prompt && (!aiHistory.length || aiHistory[0] !== prompt)) {
@@ -324,91 +516,53 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const result = await window.krit.aiQuery(prompt)
 
-        // Clear the "thinking..." line
-        term.write('\x1b[2K\r')
+        stopSpinner()
 
         if (result.type === 'command') {
           const level = result.safetyLevel || 'safe'
           const warning = result.safetyWarning || ''
 
-          // draw the right card based on safety level
           if (level === 'danger') {
-            drawHeader('󱐋', 'DANGEROUS COMMAND', red)
-            term.writeln(`   ${warning}`)
+            drawHeader('⚠', 'DANGEROUS COMMAND', red)
+            term.writeln(`   ${red}${warning}${r}`)
             term.writeln('')
             term.writeln(`   ${white}${result.content}${r}`)
             drawFooter()
             term.write(`   ${red}Type 'yes' to execute${r}: `)
           } else if (level === 'warning') {
-            drawHeader('󱐋', 'SENSITIVE COMMAND', yellow)
-            term.writeln(`   ${warning}`)
+            drawHeader('⚠', 'SENSITIVE COMMAND', yellow)
+            term.writeln(`   ${yellow}${warning}${r}`)
             term.writeln('')
             term.writeln(`   ${white}${result.content}${r}`)
             drawFooter()
             term.write(`   ${accent}run it? (y/n)${r} `)
           } else {
-            drawHeader('󱐋', 'COMMAND SUGGESTION', accent)
+            drawHeader('◈', 'COMMAND', accent)
             term.writeln(`   ${white}${result.content}${r}`)
             drawFooter()
-            term.write(`      ${dim}└─ execute? [Y/n]${r} `)
+            term.write(`   ${dim}execute? [Y/n]${r} `)
           }
 
           aiMode = level
           pendingCommand = result.content
         } else {
-          // info/answer type
-          drawHeader('󰚩', 'AI Response', accent)
-          
-          // Helper for wrapping text to terminal width
-          const wrapText = (text, width) => {
-            const lines = []
-            let currentLine = ''
-            const words = text.split(' ')
-            
-            for (const word of words) {
-              // Strip ANSI codes for length calculation
-              const cleanWord = word.replace(/\x1b\[[0-9;]*m/g, '')
-              const cleanLine = currentLine.replace(/\x1b\[[0-9;]*m/g, '')
-              
-              if (cleanLine.length + cleanWord.length + 1 > width) {
-                lines.push(currentLine)
-                currentLine = word
-              } else {
-                currentLine = currentLine ? `${currentLine} ${word}` : word
-              }
-            }
-            if (currentLine) lines.push(currentLine)
-            return lines
-          }
+          // info/answer type — show enhanced response
+          drawHeader('◈', 'AI Response', accent)
 
-          // Basic markdown to ANSI parser
-          const lines = result.content.split('\n')
-          const formattedLines = []
-
-          for (let line of lines) {
-            let formatted = line
-              .replace(/\*\*(.*?)\*\*/g, '\x1b[1m$1\x1b[22m') // bold
-              .replace(/`(.*?)`/g, `${accent}$1${r}${white}`) // inline code
-
-            if (line.trim().startsWith('```')) {
-              formattedLines.push(`   ${dim}${formatted}${r}`)
-            } else {
-              // Wrap the line content (subtracting indentation)
-              const wrapped = wrapText(formatted, term.cols - 10)
-              wrapped.forEach(w => formattedLines.push(`   ${white}${w}${r}`))
-            }
-          }
-
+          const formattedLines = renderMarkdown(result.content)
           term.writeln(formattedLines.join('\r\n'))
           drawFooter()
-          
+
           // ENTER CHAT MODE
           isChatting = true
+          if (!chatBannerShown) {
+            writeChatBanner()
+            chatBannerShown = true
+          }
           writeAiChatPrompt()
         }
       } catch (err) {
-        // Clear thinking line
-        term.write('\x1b[2K\r')
+        stopSpinner()
         writeAiError(`Query failed: ${err.message}`)
         resetPromptClean()
       } finally {
@@ -480,11 +634,15 @@ document.addEventListener('DOMContentLoaded', () => {
         aiProcessing = false
         isChatting = false
         pendingCommand = ''
+        chatBannerShown = false
         
         if (wasChatting) {
           term.writeln('')
+          term.writeln(`   ${dim}${italic}chat ended${r}`)
+          term.writeln('')
           resetPromptClean()
         } else {
+          stopSpinner()
           window.krit.ptyInput(data)
         }
         return
@@ -514,6 +672,9 @@ document.addEventListener('DOMContentLoaded', () => {
           term.writeln('')
           if (!prompt) {
             isChatting = false
+            chatBannerShown = false
+            term.writeln(`   ${dim}${italic}chat ended${r}`)
+            term.writeln('')
             resetPromptClean()
             return
           }
