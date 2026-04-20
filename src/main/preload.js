@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('krit', {
     ptyResize:   (cols, rows) => ipcRenderer.send('pty-resize', { cols, rows }),
     onPtyData:   (cb) => ipcRenderer.on('pty-data', (_, data) => cb(data)),
     aiQuery:     (message) => ipcRenderer.invoke('ai-query', message),
+    renderMarkdown: (content) => ipcRenderer.invoke('render-markdown', content),
     analyzeError: (command, output) => ipcRenderer.invoke('analyze-error', { command, output }),
     sendCommandOutput: (command, output) => ipcRenderer.send('command-output', { command, output }),
     sessionReset: () => ipcRenderer.send('session-reset'),

@@ -388,7 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // --- Improved markdown-to-ANSI renderer ---
+    // --- Text wrapping helper ---
     const wrapText = (text, width) => {
       const lines = []
       let currentLine = ''
@@ -407,6 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return lines
     }
 
+    // --- Markdown to ANSI renderer ---
     const renderMarkdown = (content) => {
       const lines = content.split('\n')
       const formattedLines = []
@@ -415,18 +416,27 @@ document.addEventListener('DOMContentLoaded', () => {
       const bar = `${muted}│${r}`
 
       for (let line of lines) {
-        // Code block boundaries
-        if (line.trim().startsWith('```')) {
-          if (!inCodeBlock) {
-            inCodeBlock = true
-            codeBlockLang = line.trim().slice(3).trim()
-            const langLabel = codeBlockLang ? ` ${dim}${italic}${codeBlockLang}${r}` : ''
-            formattedLines.push(`   ${muted}╭${langLabel}${r}`)
-          } else {
-            inCodeBlock = false
-            codeBlockLang = ''
-            formattedLines.push(`   ${muted}╰${r}`)
+        // Code block boundaries — handle ``` at start of line or inline after text
+        const codeBlockIdx = line.indexOf('```')
+        if (codeBlockIdx !== -1 && !inCodeBlock) {
+          const before = line.slice(0, codeBlockIdx).trim()
+          if (before) {
+            let formatted = before
+              .replace(/\*\*(.*?)\*\*/g, `${bold}$1\x1b[22m`)
+              .replace(/\*(.*?)\*/g, `${italic}$1\x1b[23m`)
+              .replace(/`(.*?)`/g, `${cyan}$1${r}${white}`)
+            formattedLines.push(`   ${bar}  ${white}${formatted}${r}`)
           }
+          inCodeBlock = true
+          codeBlockLang = line.slice(codeBlockIdx + 3).trim()
+          const langLabel = codeBlockLang ? ` ${dim}${italic}${codeBlockLang}${r}` : ''
+          formattedLines.push(`   ${muted}╭${langLabel}${r}`)
+          continue
+        }
+        if (codeBlockIdx !== -1 && inCodeBlock) {
+          inCodeBlock = false
+          codeBlockLang = ''
+          formattedLines.push(`   ${muted}╰${r}`)
           continue
         }
 
@@ -435,7 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
           continue
         }
 
-        // Empty lines — keep the accent bar
+        // Empty lines
         if (line.trim() === '') {
           formattedLines.push(`   ${bar}`)
           continue
@@ -446,13 +456,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (headingMatch) {
           const level = headingMatch[1].length
           const text = headingMatch[2]
-          if (level === 1) {
-            formattedLines.push(`   ${bar}  ${bold}${accent}${text}${r}`)
-          } else if (level === 2) {
-            formattedLines.push(`   ${bar}  ${bold}${white}${text}${r}`)
-          } else {
-            formattedLines.push(`   ${bar}  ${bold}${dim}${text}${r}`)
-          }
+          if (level === 1) formattedLines.push(`   ${bar}  ${bold}${accent}${text}${r}`)
+          else if (level === 2) formattedLines.push(`   ${bar}  ${bold}${white}${text}${r}`)
+          else formattedLines.push(`   ${bar}  ${bold}${dim}${text}${r}`)
           continue
         }
 
@@ -464,7 +470,7 @@ document.addEventListener('DOMContentLoaded', () => {
           continue
         }
 
-        // Bullet lists (-, *, •)
+        // Bullet lists
         const bulletMatch = line.match(/^(\s*)[-*•]\s+(.*)$/)
         if (bulletMatch) {
           const indent = Math.min(Math.floor(bulletMatch[1].length / 2), 3)
@@ -498,17 +504,30 @@ document.addEventListener('DOMContentLoaded', () => {
           continue
         }
 
-        // Regular paragraph — apply inline formatting
+        // Regular paragraph
         let formatted = line
           .replace(/\*\*(.*?)\*\*/g, `${bold}$1\x1b[22m`)
           .replace(/\*(.*?)\*/g, `${italic}$1\x1b[23m`)
           .replace(/`(.*?)`/g, `${cyan}$1${r}${white}`)
-
         const wrapped = wrapText(formatted, term.cols - 12)
         wrapped.forEach(w => formattedLines.push(`   ${bar}  ${white}${w}${r}`))
       }
 
       return formattedLines
+    }
+
+    // Render a multi-line command as a styled code block
+    const writeCommandBlock = (content) => {
+      const cmdLines = content.split('\n')
+      if (cmdLines.length === 1) {
+        term.writeln(`   ${white}${content}${r}`)
+      } else {
+        term.writeln(`   ${muted}╭${r}`)
+        for (const cl of cmdLines) {
+          term.writeln(`   ${muted}│${r}  ${cyan}${cl}${r}`)
+        }
+        term.writeln(`   ${muted}╰${r}`)
+      }
     }
 
     // Track if we've shown the chat banner yet this session
@@ -542,25 +561,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (result.type === 'command') {
           const level = result.safetyLevel || 'safe'
           const warning = result.safetyWarning || ''
-          const formattedContent = result.content.split(/\r?\n/).join('\r\n   ')
 
           if (level === 'danger') {
             drawHeader('⚠', 'DANGEROUS COMMAND', red)
             term.writeln(`   ${red}${warning}${r}`)
             term.writeln('')
-            term.writeln(`   ${white}${formattedContent}${r}`)
+            writeCommandBlock(result.content)
             drawFooter()
             term.write(`   ${red}Type 'yes' to execute${r}: `)
           } else if (level === 'warning') {
             drawHeader('⚠', 'SENSITIVE COMMAND', yellow)
             term.writeln(`   ${yellow}${warning}${r}`)
             term.writeln('')
-            term.writeln(`   ${white}${formattedContent}${r}`)
+            writeCommandBlock(result.content)
             drawFooter()
             term.write(`   ${accent}run it? (y/n)${r} `)
           } else {
             drawHeader('◈', 'COMMAND', accent)
-            term.writeln(`   ${white}${formattedContent}${r}`)
+            writeCommandBlock(result.content)
             drawFooter()
             term.write(`   ${dim}execute? [Y/n]${r} `)
           }

@@ -4,6 +4,13 @@ const path = require('path')
 const ptyManager = require('./pty')
 const ai = require('../ai/controller')
 const safety = require('../ai/safety')
+const { marked } = require('marked')
+const { markedTerminal } = require('marked-terminal')
+
+marked.use(markedTerminal({
+    reflowText: true,
+    width: 80 // Adjust to fit terminal width roughly
+}))
 
 // Fix GPU/VSync crashes on Wayland (CachyOS, etc.)
 app.commandLine.appendSwitch('ozone-platform-hint', 'auto')
@@ -101,6 +108,10 @@ ipcMain.handle('analyze-error', async (_, { command, output }) => {
         return { ...result, safetyLevel: level, safetyWarning: warning }
     }
     return result
+})
+
+ipcMain.handle('render-markdown', (_, content) => {
+    return marked.parse(content)
 })
 
 // capture command output for AI session context
