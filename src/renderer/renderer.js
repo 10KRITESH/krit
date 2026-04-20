@@ -222,8 +222,21 @@ document.addEventListener('DOMContentLoaded', () => {
       term.writeln(`   ${accent}◈${r}  ${text}`)
     }
 
+    const drawHeader = (icon, title, color = accent) => {
+      const width = Math.min(term.cols - 10, 80)
+      const horizontal = '━'.repeat(width - title.length - 5)
+      term.writeln(`\r\n   ${color}${icon}  ${bold}${title.toUpperCase()}${r} ${dim}${horizontal}${r}`)
+    }
+
+    const drawFooter = () => {
+      const width = Math.min(term.cols - 10, 80)
+      const horizontal = '─'.repeat(width)
+      term.writeln(`   ${dim}${horizontal}${r}`)
+    }
+
     const writeAiChatPrompt = () => {
-      term.write(`   ${muted}◈ (Chat Mode)${r}  ${white}`)
+      drawHeader('󰭹', 'Your Message', muted)
+      term.write(`   ${accent}❯${r}  ${white}`)
     }
 
     const writeAiError = (text) => {
@@ -297,7 +310,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const processAiQuery = async (prompt) => {
       aiProcessing = true
       isChatting = false // Reset chat mode while thinking
-      writeAiLine(`${dim}thinking...${r}`)
+      
+      // Spinner-like thinking line
+      term.write(`\r   ${accent}󱐋${r}  ${dim}thinking...${r}`)
 
       // Save to history
       if (prompt && (!aiHistory.length || aiHistory[0] !== prompt)) {
@@ -310,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await window.krit.aiQuery(prompt)
 
         // Clear the "thinking..." line
-        term.write('\x1b[1A\x1b[2K\r')
+        term.write('\x1b[2K\r')
 
         if (result.type === 'command') {
           const level = result.safetyLevel || 'safe'
@@ -318,27 +333,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
           // draw the right card based on safety level
           if (level === 'danger') {
-            term.writeln('')
-            term.writeln(`   \x1b[38;2;249;115;134m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m`)
-            term.writeln(`   ${red}DANGEROUS COMMAND${r}`)
+            drawHeader('󱐋', 'DANGEROUS COMMAND', red)
             term.writeln(`   ${warning}`)
-            term.writeln(`   \x1b[38;2;249;115;134m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m`)
             term.writeln('')
             term.writeln(`   ${white}${result.content}${r}`)
-            term.writeln('')
+            drawFooter()
             term.write(`   ${red}Type 'yes' to execute${r}: `)
           } else if (level === 'warning') {
-            term.writeln('')
-            term.writeln(`   \x1b[38;2;239;159;39m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m`)
-            term.writeln(`   \x1b[38;2;239;159;39mSENSITIVE COMMAND\x1b[0m`)
+            drawHeader('󱐋', 'SENSITIVE COMMAND', yellow)
             term.writeln(`   ${warning}`)
-            term.writeln(`   \x1b[38;2;239;159;39m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m`)
             term.writeln('')
             term.writeln(`   ${white}${result.content}${r}`)
-            term.writeln('')
+            drawFooter()
             term.write(`   ${accent}run it? (y/n)${r} `)
           } else {
-            term.writeln(`   ${accent}◈${r}  ${accent}${result.content}${r}`)
+            drawHeader('󱐋', 'COMMAND SUGGESTION', accent)
+            term.writeln(`   ${white}${result.content}${r}`)
+            drawFooter()
             term.write(`      ${dim}└─ execute? [Y/n]${r} `)
           }
 
@@ -346,7 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
           pendingCommand = result.content
         } else {
           // info/answer type
-          term.writeln('')
+          drawHeader('󰚩', 'AI Response', accent)
           
           // Helper for wrapping text to terminal width
           const wrapText = (text, width) => {
@@ -389,13 +400,15 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           term.writeln(formattedLines.join('\r\n'))
-          term.writeln('')
+          drawFooter()
           
           // ENTER CHAT MODE
           isChatting = true
           writeAiChatPrompt()
         }
       } catch (err) {
+        // Clear thinking line
+        term.write('\x1b[2K\r')
         writeAiError(`Query failed: ${err.message}`)
         resetPromptClean()
       } finally {
