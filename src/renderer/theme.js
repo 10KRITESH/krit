@@ -1,0 +1,16 @@
+// --- Color helpers ---
+export const g = (code) => `\x1b[38;5;${code}m`
+export const r = '\x1b[0m'
+export const bold = '\x1b[1m'
+export const dim = '\x1b[2m'
+export const italic = '\x1b[3m'
+export const underline = '\x1b[4m'
+export const muted = '\x1b[38;2;116;117;127m'
+export const white = '\x1b[38;2;229;228;240m'
+export const accent = '\x1b[38;2;122;162;247m'
+export const red = '\x1b[38;2;249;115;134m'
+export const green = '\x1b[38;2;158;206;106m'
+export const yellow = '\x1b[38;2;224;175;104m'
+export const cyan = '\x1b[38;2;125;207;255m'
+export const purple = '\x1b[38;2;157;121;255m'
+export const pink = '\x1b[38;2;255;183;219m'
