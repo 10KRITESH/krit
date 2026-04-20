@@ -184,11 +184,13 @@ document.addEventListener('DOMContentLoaded', () => {
               resetPromptClean()
             } else {
               // No analysis, clean up the line and move back up to prompt
-              term.write('\x1b[2K\r\x1b[1A')
+              term.write('\x1b[2K\r')
+              resetPromptClean()
             }
           } catch (err) {
             // Clean up the line and move back up on error
-            term.write('\x1b[2K\r\x1b[1A')
+            term.write('\x1b[2K\r')
+            resetPromptClean()
           }
         }
       }

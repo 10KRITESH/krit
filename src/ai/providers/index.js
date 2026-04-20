@@ -5,6 +5,7 @@ const custom = require('./custom')
 const settings = require('../../config/settings')
 
 const getProvider = () => {
+    settings.load() // Always reload to pick up changes from CLI menu
     const providerName = settings.get('provider')
     
     // Setup for Phase 9 expansions natively routing logic

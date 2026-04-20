@@ -36,7 +36,8 @@ const analyzeError = async (command, output, cwd) => {
     try {
         const prompt = `The user ran the command: \`${command}\`\n\nIt produced this output/error:\n\`\`\`\n${output}\n\`\`\`\n\nProvide a very short explanation of why it failed. If there is a clear fix, suggest the exact command to fix it. Respond with type "command". Format your 'content' field exactly as: "Your brief explanation here. ||| the-fix-command-here". If no command fix exists, just respond with type "chat" and the explanation as content.`
         
-        const history = context.getHistory()
+        // Append prompt to history temporarily for this request
+        const history = [...context.getHistory(), { role: 'user', content: prompt }]
         const result = await providers.ask(prompt, cwd, history)
 
         if (!result || !result.type || !result.content) {

@@ -24,10 +24,14 @@ const start = (onData, cols = 80, rows = 24) => {
     })
 
     const tmpRc = path.join(os.tmpdir(), '.krit_bashrc')
+    const wizardPath = path.join(__dirname, 'wizard.js')
+    const execPath = process.execPath
+
     require('fs').writeFileSync(tmpRc, `
 if [ -f ~/.bashrc ]; then source ~/.bashrc; fi
 eval "$(starship init bash)"
 alias ls='eza --icons --group-directories-first' 2>/dev/null || alias ls='ls --color=auto'
+alias krit-config='ELECTRON_RUN_AS_NODE=1 "${execPath}" "${wizardPath}"'
 `)
 
     let cmd = '/bin/bash'
@@ -37,8 +41,8 @@ alias ls='eza --icons --group-directories-first' 2>/dev/null || alias ls='ls --c
         settings.ensureConfigExists()
         // In production/AppImage, process.execPath is the binary itself.
         // We use ELECTRON_RUN_AS_NODE to make it act like a node binary for the wizard.
-        cmd = process.execPath
-        args = [path.join(__dirname, 'wizard.js')]
+        cmd = execPath
+        args = [wizardPath, '--setup']
         env.ELECTRON_RUN_AS_NODE = '1'
     }
 
