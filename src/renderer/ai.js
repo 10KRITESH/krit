@@ -12,6 +12,8 @@ export const processAiQuery = async (term, prompt) => {
   state.isChatting = false;
 
   if (wasChatting) {
+    // Clear the raw input line echoed by renderer.js to prevent duplication
+    term.write('\x1b[A\x1b[2K\r');
     writeUserBubble(term, prompt);
   }
 

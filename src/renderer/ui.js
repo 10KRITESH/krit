@@ -129,7 +129,6 @@ export const drawFooter = (term) => {
 };
 
 export const writeUserBubble = (term, text) => {
-  term.writeln('');
   term.writeln(`   ${purple}❯${r}  ${dim}${italic}you${r}`);
   const maxW = Math.min(term.cols - 12, 76);
   const words = text.split(' ');
