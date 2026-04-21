@@ -1,7 +1,8 @@
 require('dotenv').config()
-const { app, BrowserWindow, ipcMain } = require('electron')
+const { app, BrowserWindow, ipcMain, Menu, MenuItem } = require('electron')
 const path = require('path')
 const ptyManager = require('./pty')
+const settings = require('../config/settings')
 const ai = require('../ai/controller')
 const safety = require('../ai/safety')
 const { marked } = require('marked')
@@ -34,6 +35,7 @@ const createWindow = () => {
         frame: false, // Back to sleek borderless!
         transparent: true,
         backgroundColor: '#00000000',
+        icon: path.join(__dirname, '../../build/icon.png'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
@@ -46,17 +48,29 @@ const createWindow = () => {
 
     mainWindow.loadFile(path.join(__dirname, '../../src/renderer/index.html'))
     
-    // DevTools removed for clean production feel
+    // Add context menu for copy/paste
+    mainWindow.webContents.on('context-menu', (e, params) => {
+        const menu = new Menu()
+        menu.append(new MenuItem({ label: 'Copy', role: 'copy', enabled: params.editFlags.canCopy }))
+        menu.append(new MenuItem({ label: 'Paste', role: 'paste', enabled: params.editFlags.canPaste }))
+        menu.append(new MenuItem({ type: 'separator' }))
+        menu.append(new MenuItem({ label: 'Select All', role: 'selectall' }))
+        menu.popup({ window: mainWindow })
+    })
 
     mainWindow.once('ready-to-show', () => {
-        // PTY starts automatically now
-        ptyManager.start(
-            (data) => {
-                // try to track cwd from shell output
-                mainWindow.webContents.send('pty-data', data)
-            },
-            80, 24
-        )
+        const startPty = () => {
+            ptyManager.start(
+                (data) => {
+                    mainWindow.webContents.send('pty-data', data)
+                },
+                (exitCode) => {
+                    mainWindow.webContents.send('pty-data', `\r\n\x1b[31m[Session terminated with code ${exitCode.exitCode}]\x1b[0m\r\n\x1b[33mPress Enter to restart shell...\x1b[0m\r\n`)
+                },
+                80, 24
+            )
+        }
+        startPty()
     })
 }
 
@@ -68,7 +82,12 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+    ptyManager.stop()
     if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('will-quit', () => {
+    ptyManager.stop()
 })
 
 ipcMain.on('window-minimize', () => mainWindow.minimize())
@@ -88,6 +107,9 @@ ipcMain.on('cwd-update', (_, cwd) => {
 
 // handle AI query from renderer
 ipcMain.handle('ai-query', async (_, message) => {
+    const latestCwd = ptyManager.getCwd()
+    if (latestCwd) currentCwd = latestCwd
+
     const result = await ai.query(message, currentCwd)
 
     // if AI returned a command, classify it before sending back
@@ -101,6 +123,9 @@ ipcMain.handle('ai-query', async (_, message) => {
 })
 
 ipcMain.handle('analyze-error', async (_, { command, output }) => {
+    const latestCwd = ptyManager.getCwd()
+    if (latestCwd) currentCwd = latestCwd
+
     const result = await ai.analyzeError(command, output, currentCwd)
     if (result && result.type === 'command') {
         const level = safety.classify(result.content)
@@ -122,4 +147,12 @@ ipcMain.on('command-output', (_, { command, output }) => {
 // reset AI session history
 ipcMain.on('session-reset', () => {
     ai.reset()
+})
+
+ipcMain.on('get-setting', (event, key) => {
+    event.returnValue = settings.get(key)
+})
+
+ipcMain.on('save-setting', (_, { key, value }) => {
+    settings.set(key, value)
 })

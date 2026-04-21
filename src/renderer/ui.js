@@ -28,15 +28,20 @@ export const renderMarkdown = (term, content) => {
   let codeBlockLang = '';
   const bar = `${muted}│${r}`;
 
+  const applyInlineStyles = (text) => {
+    return text
+      .replace(/\*\*\*(.*?)\*\*\*/g, `${bold}${italic}$1${r}${white}`) // Bold + Italic
+      .replace(/\*\*(.*?)\*\*/g, `${bold}$1${r}${white}`)              // Bold
+      .replace(/\*(.*?)\*/g, `${italic}$1${r}${white}`)                // Italic
+      .replace(/`(.*?)`/g, `${cyan}$1${r}${white}`);                  // Inline code
+  };
+
   for (let line of lines) {
     const codeBlockIdx = line.indexOf('```');
     if (codeBlockIdx !== -1 && !inCodeBlock) {
       const before = line.slice(0, codeBlockIdx).trim();
       if (before) {
-        const formatted = before
-          .replace(/\*\*(.*?)\*\*/g, `${bold}$1\x1b[22m`)
-          .replace(/\*(.*?)\*/g, `${italic}$1\x1b[23m`)
-          .replace(/`(.*?)`/g, `${cyan}$1${r}${white}`);
+        const formatted = applyInlineStyles(before);
         formattedLines.push(`   ${bar}  ${white}${formatted}${r}`);
       }
       inCodeBlock = true;
@@ -75,10 +80,7 @@ export const renderMarkdown = (term, content) => {
     const bulletMatch = line.match(/^(\s*)[-*•]\s+(.*)$/);
     if (bulletMatch) {
       const indent = Math.min(Math.floor(bulletMatch[1].length / 2), 3);
-      let text = bulletMatch[2]
-        .replace(/\*\*(.*?)\*\*/g, `${bold}$1\x1b[22m`)
-        .replace(/\*(.*?)\*/g, `${italic}$1\x1b[23m`)
-        .replace(/`(.*?)`/g, `${cyan}$1${r}${white}`);
+      let text = applyInlineStyles(bulletMatch[2]);
       const pad = '  '.repeat(indent);
       const bullet = indent === 0 ? `${accent}▸${r}` : `${muted}◦${r}`;
       wrapText(text, term.cols - 14 - indent * 2).forEach((w, i) => {
@@ -90,10 +92,7 @@ export const renderMarkdown = (term, content) => {
 
     const numberedMatch = line.match(/^(\s*)(\d+)\.\s+(.*)$/);
     if (numberedMatch) {
-      let text = numberedMatch[3]
-        .replace(/\*\*(.*?)\*\*/g, `${bold}$1\x1b[22m`)
-        .replace(/\*(.*?)\*/g, `${italic}$1\x1b[23m`)
-        .replace(/`(.*?)`/g, `${cyan}$1${r}${white}`);
+      let text = applyInlineStyles(numberedMatch[3]);
       const num = numberedMatch[2];
       wrapText(text, term.cols - 16).forEach((w, i) => {
         if (i === 0) formattedLines.push(`   ${bar}  ${accent}${num}.${r} ${white}${w}${r}`);
@@ -102,10 +101,7 @@ export const renderMarkdown = (term, content) => {
       continue;
     }
 
-    let formatted = line
-      .replace(/\*\*(.*?)\*\*/g, `${bold}$1\x1b[22m`)
-      .replace(/\*(.*?)\*/g, `${italic}$1\x1b[23m`)
-      .replace(/`(.*?)`/g, `${cyan}$1${r}${white}`);
+    let formatted = applyInlineStyles(line);
     wrapText(formatted, term.cols - 12).forEach(w => formattedLines.push(`   ${bar}  ${white}${w}${r}`));
   }
 

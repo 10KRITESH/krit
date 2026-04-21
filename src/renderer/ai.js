@@ -73,8 +73,13 @@ export const processAiQuery = async (term, prompt) => {
   } catch (err) {
     stopSpinner(term);
     writeAiError(term, `Query failed: ${err.message}`);
-    // We can't call resetPromptClean here because of circular dependency
-    // Instead, we'll let renderer.js handle the cleanup or pass a callback
+    
+    state.isChatting = false;
+    state.aiProcessing = false;
+    state.lineBuffer = '';
+    state.cursorPos = 0;
+    
+    // Send a newline to PTY to reset the prompt visually if needed
     window.krit.ptyInput('\n');
   } finally {
     state.aiProcessing = false;

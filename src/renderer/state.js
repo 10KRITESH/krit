@@ -1,5 +1,6 @@
 export const state = {
   lineBuffer: '',
+  cursorPos: 0,
   aiMode: false,       // waiting for y/n confirmation
   aiProcessing: false, // AI query in progress
   isChatting: false,   // immersive chat conversation mode
@@ -20,5 +21,6 @@ export const state = {
   // --- UI state ---
   chatBannerShown: false,
   spinnerInterval: null,
-  spinnerIndex: 0
+  spinnerIndex: 0,
+  ptyDead: false
 };

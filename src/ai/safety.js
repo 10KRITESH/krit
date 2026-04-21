@@ -15,6 +15,12 @@ const DANGER_PATTERNS_LINUX = [
     />\s*\/dev\/sda/i,
     /fdisk/i,
     /parted/i,
+    /mkswap/i,
+    /swapoff/i,
+    /rmdir\s+\/s/i,
+    /history\s+-c/i,
+    /: >/i,
+    /mv\s+.*\/dev\/null/i,
 ]
 
 const DANGER_PATTERNS_WINDOWS = [
@@ -25,6 +31,7 @@ const DANGER_PATTERNS_WINDOWS = [
     /del\s+\/f\s+\/s/i,
     /rmdir\s+\/s/i,
     /cipher\s+\/w/i,
+    /rd\s+\/s\s+\/q/i,
 ]
 
 const WARNING_PATTERNS = [
@@ -42,6 +49,11 @@ const WARNING_PATTERNS = [
     /killall/i,
     /truncate/i,
     /> \S+/,
+    /apt-get\s+remove/i,
+    /dnf\s+remove/i,
+    /pacman\s+-R/i,
+    /reboot/i,
+    /shutdown/i,
 ]
 
 const SAFE_COMMANDS = [
@@ -66,13 +78,7 @@ const classify = (command) => {
         return 'danger'
     }
 
-    // check against safe list first
-    const isSafe = SAFE_COMMANDS.some(safe =>
-        trimmed.toLowerCase().startsWith(safe.toLowerCase())
-    )
-    if (isSafe) return 'safe'
-
-    // check danger patterns
+    // check danger patterns first (Highest priority)
     const dangerPatterns = isWindows
         ? DANGER_PATTERNS_WINDOWS
         : DANGER_PATTERNS_LINUX
@@ -83,6 +89,12 @@ const classify = (command) => {
     // check warning patterns
     const isWarning = WARNING_PATTERNS.some(pattern => pattern.test(trimmed))
     if (isWarning) return 'warning'
+
+    // check against safe list last
+    const isSafe = SAFE_COMMANDS.some(safe =>
+        trimmed.toLowerCase().startsWith(safe.toLowerCase())
+    )
+    if (isSafe) return 'safe'
 
     return 'safe'
 }

@@ -25,7 +25,16 @@ const getProvider = () => {
 
 const ask = async (userMessage, cwd, history, fileList = []) => {
     const activeProvider = getProvider()
-    return await activeProvider.ask(userMessage, cwd, history, fileList)
+    
+    // 30 second timeout for all AI requests
+    const timeout = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('AI request timed out after 30 seconds')), 30000)
+    })
+
+    return await Promise.race([
+        activeProvider.ask(userMessage, cwd, history, fileList),
+        timeout
+    ])
 }
 
 module.exports = { ask }

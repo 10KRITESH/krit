@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron')
 contextBridge.exposeInMainWorld('krit', {
     platform: process.platform,
     version: '0.1.0',
-    aiModel: process.env.GROQ_MODEL || process.env.OLLAMA_MODEL || 'groq',
+    get aiModel() { return ipcRenderer.sendSync('get-setting', 'model') || 'ollama' },
     os: {
         uptime: require('os').uptime(),
         totalmem: require('os').totalmem(),
@@ -25,4 +25,6 @@ contextBridge.exposeInMainWorld('krit', {
     sendCommandOutput: (command, output) => ipcRenderer.send('command-output', { command, output }),
     sessionReset: () => ipcRenderer.send('session-reset'),
     updateCwd:   (cwd) => ipcRenderer.send('cwd-update', cwd),
+    getSetting:  (key) => ipcRenderer.sendSync('get-setting', key),
+    saveSetting: (key, value) => ipcRenderer.send('save-setting', { key, value }),
 })

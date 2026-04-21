@@ -54,6 +54,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const fitAddon = new FitAddon.FitAddon();
     term.loadAddon(fitAddon);
     term.open(document.getElementById('terminal'));
+
+    // Load saved font size
+    const savedFontSize = window.krit.getSetting('fontSize');
+    if (savedFontSize) term.options.fontSize = savedFontSize;
+
     fitAddon.fit();
     term.focus();
 
@@ -110,28 +115,108 @@ document.addEventListener('DOMContentLoaded', () => {
       window.krit.ptyResize(term.cols, term.rows);
     });
 
+    const isAiPrefix = (buf) => buf.trimStart().startsWith('-');
+
+    const getCommandFromBuffer = () => {
+      const buffer = term.buffer.active;
+      let currY = buffer.cursorY + buffer.baseY;
+      let lineText = '';
+      
+      while (currY > 0 && buffer.getLine(currY - 1) && buffer.getLine(currY).isWrapped) {
+        currY--;
+      }
+      
+      let scanY = currY;
+      while (scanY <= buffer.cursorY + buffer.baseY) {
+        const line = buffer.getLine(scanY);
+        if (line) lineText += line.translateToString(true);
+        scanY++;
+      }
+      
+      const promptMarkers = ['❯', '$', '#', '%', '>', '»', ']', '}', '➜', '➜', '»'];
+      let lastMarkerIndex = -1;
+      for (const marker of promptMarkers) {
+        const idx = lineText.lastIndexOf(marker);
+        if (idx > lastMarkerIndex) lastMarkerIndex = idx;
+      }
+      
+      return lastMarkerIndex !== -1 ? lineText.slice(lastMarkerIndex + 1).trim() : lineText.trim();
+    };
+
     document.addEventListener('keydown', (e) => {
       const isCtrl = e.ctrlKey || e.metaKey;
+
+      if (isCtrl && e.shiftKey) {
+        if (e.key.toLowerCase() === 'c') {
+          const selection = term.getSelection();
+          if (selection) {
+            navigator.clipboard.writeText(selection);
+          }
+          e.preventDefault();
+          return;
+        }
+        if (e.key.toLowerCase() === 'v') {
+          navigator.clipboard.readText().then(text => {
+            if (state.isChatting || isAiPrefix(state.lineBuffer)) {
+              // Normalize multi-line paste to a single line for AI prompt
+              const normalized = text.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
+              term.write(normalized);
+              
+              const before = state.lineBuffer.slice(0, state.cursorPos);
+              const after = state.lineBuffer.slice(state.cursorPos);
+              state.lineBuffer = before + normalized + after;
+              state.cursorPos += normalized.length;
+              
+              // Redraw the 'after' part if we pasted in the middle
+              if (after) {
+                term.write(after);
+                for (let i = 0; i < after.length; i++) term.write('\b');
+              }
+            } else {
+              window.krit.ptyInput(text);
+            }
+          });
+          e.preventDefault();
+          return;
+        }
+      }
+
       if (!isCtrl) return;
       if (e.key === '=' || e.key === '+') {
         e.preventDefault();
         term.options.fontSize = Math.min(term.options.fontSize + 1, 32);
+        window.krit.saveSetting('fontSize', term.options.fontSize);
         fitAddon.fit();
         window.krit.ptyResize(term.cols, term.rows);
       } else if (e.key === '-') {
         e.preventDefault();
         term.options.fontSize = Math.max(term.options.fontSize - 1, 6);
+        window.krit.saveSetting('fontSize', term.options.fontSize);
         fitAddon.fit();
         window.krit.ptyResize(term.cols, term.rows);
       } else if (e.key === '0') {
         e.preventDefault();
         term.options.fontSize = 16;
+        window.krit.saveSetting('fontSize', 16);
         fitAddon.fit();
         window.krit.ptyResize(term.cols, term.rows);
+      } else if (e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        term.clear();
+        term.write('\x1b[H\x1b[2J');
       }
     });
 
     window.krit.onPtyData((data) => {
+      if (data.includes('[Session terminated with code')) {
+        state.ptyDead = true;
+      }
+      // Check for OSC 7 sequence: \x1b]7;file://hostname/path\x07 or \x1b]7;file://hostname/path\x1b\\
+      const osc7Match = data.match(/\x1b]7;file:\/\/[^\/]+(\/[^\x07\x1b]+)(?:\x07|\x1b\\)/);
+      if (osc7Match && osc7Match[1]) {
+        window.krit.updateCwd(decodeURIComponent(osc7Match[1]));
+      }
+
       term.write(data);
       if (state.capturing) {
         state.outputBuffer += data;
@@ -139,8 +224,6 @@ document.addEventListener('DOMContentLoaded', () => {
         state.outputTimer = setTimeout(() => flushOutputCapture(term), 800);
       }
     });
-
-    const isAiPrefix = (buf) => buf.trimStart().startsWith('-');
 
     term.onData((data) => {
       if (data.charCodeAt(0) === 27 && data.length > 1) {
@@ -153,6 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 state.aiHistoryIndex++;
                 for (let i = 0; i < state.lineBuffer.length; i++) term.write('\b \b');
                 state.lineBuffer = (state.isChatting ? '' : '- ') + state.aiHistory[state.aiHistoryIndex];
+                state.cursorPos = state.lineBuffer.length;
                 term.write(state.lineBuffer);
               }
               return;
@@ -162,12 +246,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (let i = 0; i < state.lineBuffer.length; i++) term.write('\b \b');
                 if (state.aiHistoryIndex === -1) state.lineBuffer = state.currentInputSave;
                 else state.lineBuffer = (state.isChatting ? '' : '- ') + state.aiHistory[state.aiHistoryIndex];
+                state.cursorPos = state.lineBuffer.length;
                 term.write(state.lineBuffer);
+              }
+              return;
+            } else if (data === '\x1b[D') { // Left
+              if (state.cursorPos > (state.isChatting ? 0 : 2)) {
+                state.cursorPos--;
+                term.write(data);
+              }
+              return;
+            } else if (data === '\x1b[C') { // Right
+              if (state.cursorPos < state.lineBuffer.length) {
+                state.cursorPos++;
+                term.write(data);
               }
               return;
             }
           }
           state.lineBuffer = '';
+          state.cursorPos = 0;
           window.krit.ptyInput(data);
         }
         return;
@@ -185,6 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data === '\x03') { // Ctrl+C
         const wasChatting = state.isChatting;
         state.lineBuffer = '';
+        state.cursorPos = 0;
         state.aiMode = false;
         state.aiProcessing = false;
         state.isChatting = false;
@@ -208,20 +307,29 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.isChatting) {
           for (let i = 0; i < state.lineBuffer.length; i++) term.write('\b \b');
           state.lineBuffer = '';
+          state.cursorPos = 0;
         } else {
           state.lineBuffer = '';
+          state.cursorPos = 0;
           window.krit.ptyInput(data);
         }
         return;
       }
 
       if (data.includes('\r') || data.includes('\n')) {
+        if (state.ptyDead) {
+          state.ptyDead = false;
+          window.krit.sessionReset();
+          window.location.reload();
+          return;
+        }
         const parts = data.split(/[\r\n]+/);
         state.lineBuffer += parts[0];
 
         if (state.isChatting) {
           const prompt = state.lineBuffer.trim();
           state.lineBuffer = '';
+          state.cursorPos = 0;
           term.writeln('');
           if (!prompt) {
             state.isChatting = false;
@@ -239,26 +347,45 @@ document.addEventListener('DOMContentLoaded', () => {
         if (input.startsWith('- ')) {
           const prompt = input.slice(2).trim();
           state.lineBuffer = '';
+          state.cursorPos = 0;
           term.writeln('');
           if (!prompt) { resetPromptClean(); return; }
           processAiQuery(term, prompt);
         } else if (input === '-') {
           term.writeln('');
+          state.lineBuffer = '';
+          state.cursorPos = 0;
           resetPromptClean();
         } else {
-          if (input.trim()) startOutputCapture(input.trim());
+          const actualCommand = getCommandFromBuffer();
+          if (actualCommand) startOutputCapture(actualCommand);
           window.krit.ptyInput(data);
           state.lineBuffer = '';
+          state.cursorPos = 0;
         }
         return;
       }
 
       if (code === 127) { // Backspace
         if (state.lineBuffer.length > 0) {
-          const wasInAiPrefix = state.isChatting || isAiPrefix(state.lineBuffer);
-          state.lineBuffer = state.lineBuffer.slice(0, -1);
-          if (wasInAiPrefix) term.write('\b \b');
-          else window.krit.ptyInput(data);
+          const isAi = state.isChatting || isAiPrefix(state.lineBuffer);
+          if (isAi) {
+            const minPos = state.isChatting ? 0 : 2;
+            if (state.cursorPos > minPos) {
+              const before = state.lineBuffer.slice(0, state.cursorPos - 1);
+              const after = state.lineBuffer.slice(state.cursorPos);
+              state.lineBuffer = before + after;
+              state.cursorPos--;
+              
+              term.write('\b');
+              term.write(after + ' ');
+              for (let i = 0; i <= after.length; i++) term.write('\b');
+            }
+          } else {
+            state.lineBuffer = state.lineBuffer.slice(0, -1);
+            state.cursorPos = Math.max(0, state.cursorPos - 1);
+            window.krit.ptyInput(data);
+          }
         }
         return;
       }
@@ -268,9 +395,19 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      state.lineBuffer += data;
-      if (state.isChatting || isAiPrefix(state.lineBuffer)) term.write(data);
-      else window.krit.ptyInput(data);
+      const isAi = state.isChatting || isAiPrefix(state.lineBuffer + data);
+      if (isAi) {
+        const before = state.lineBuffer.slice(0, state.cursorPos);
+        const after = state.lineBuffer.slice(state.cursorPos);
+        state.lineBuffer = before + data + after;
+        state.cursorPos += data.length;
+        term.write(data + after);
+        for (let i = 0; i < after.length; i++) term.write('\b');
+      } else {
+        state.lineBuffer += data;
+        state.cursorPos += data.length;
+        window.krit.ptyInput(data);
+      }
     });
 
   } catch (err) {

@@ -36,30 +36,30 @@ const ask = async (userMessage, cwd, history = [], fileList = []) => {
 
         const raw = response.choices[0]?.message?.content || ''
 
-        // Try to find any JSON-looking structure in the text
-        const jsonMatch = raw.match(/\{[\s\S]*\}/)
-        let cleaned = jsonMatch ? jsonMatch[0] : raw.trim()
-
-        if (cleaned.startsWith('```')) {
-            cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
-        }
-
-        try {
-            const parsed = JSON.parse(cleaned)
-            if (parsed.type && parsed.content) {
-                return { type: parsed.type, content: parsed.content }
-            }
-        } catch {
+        // Improved JSON extraction: find the outermost { }
+        const startIdx = raw.indexOf('{')
+        const endIdx = raw.lastIndexOf('}')
+        
+        if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+            const jsonStr = raw.slice(startIdx, endIdx + 1)
             try {
-                let fixed = cleaned
-                    .replace(/(?<!\\)\\(?!["\\/bfnrt])/g, '\\\\')
-                    .replace(/\n/g, '\\n')
-                const parsed = JSON.parse(fixed)
+                const parsed = JSON.parse(jsonStr)
                 if (parsed.type && parsed.content) {
                     return { type: parsed.type, content: parsed.content }
                 }
-            } catch {
-                // Proceed to chat fallback
+            } catch (err) {
+                // Try simple common fixes for LLM-generated JSON
+                try {
+                    const fixed = jsonStr
+                        .replace(/\\n/g, '\\n') // Ensure escaped newlines stay escaped
+                        .replace(/\n/g, '\\n')  // Escape real newlines
+                    const parsed = JSON.parse(fixed)
+                    if (parsed.type && parsed.content) {
+                        return { type: parsed.type, content: parsed.content }
+                    }
+                } catch {
+                    // Fall back to chat
+                }
             }
         }
 

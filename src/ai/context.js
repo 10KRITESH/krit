@@ -1,4 +1,5 @@
 const MAX_MESSAGES = 30
+const MAX_TOTAL_CHARS = 16000 // Roughly 4k tokens
 const MAX_OUTPUT_LINES_START = 50
 const MAX_OUTPUT_LINES_END = 20
 
@@ -37,8 +38,16 @@ const addCommandOutput = (command, output) => {
 }
 
 const trim = () => {
+    // Trim by message count
     if (history.length > MAX_MESSAGES) {
         history = history.slice(history.length - MAX_MESSAGES)
+    }
+
+    // Trim by total character length
+    let totalChars = history.reduce((sum, msg) => sum + msg.content.length, 0)
+    while (totalChars > MAX_TOTAL_CHARS && history.length > 1) {
+        const removed = history.shift()
+        totalChars -= removed.content.length
     }
 }
 

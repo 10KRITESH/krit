@@ -133,11 +133,18 @@ function finish() {
     if (isInitialSetup) {
         console.log(`  ${dim}You can always change settings by typing "krit-config" in the terminal.${r}\r\n`)
 
-        const shell = '/bin/bash'
-        const tmpRc = path.join(os.tmpdir(), '.krit_bashrc')
+        const kritDir = path.join(os.homedir(), '.krit')
+        const tmpRc = path.join(kritDir, '.bashrc_pty')
+        
+        const cleanEnv = { ...process.env }
+        delete cleanEnv.OPENAI_API_KEY
+        delete cleanEnv.GROQ_API_KEY
+        delete cleanEnv.ANTHROPIC_API_KEY
+        delete cleanEnv.GOOGLE_GENERATIVE_AI_API_KEY
+
         const bash = spawn(shell, ['--rcfile', tmpRc, '-i'], {
             stdio: 'inherit',
-            env: Object.assign({}, process.env, {
+            env: Object.assign({}, cleanEnv, {
                  TERM: 'xterm-256color',
                  HISTCONTROL: 'ignoreboth',
                  SHELL: '/bin/bash'
