@@ -76,7 +76,6 @@ export const handleAiConfirm = (term, key) => {
       } else {
         term.writeln('');
         writeAiLine(term, `${dim}cancelled.${r}`);
-        term.writeln('');
         state.aiMode = false;
         state.pendingCommand = '';
         if (state.shouldResumeChat) {
@@ -109,9 +108,7 @@ export const handleAiConfirm = (term, key) => {
     window.krit.ptyInput(cmd + '\n');
   } else {
     term.writeln('n');
-    term.writeln('');
     writeAiLine(term, `${dim}cancelled.${r}`);
-    term.writeln('');
     state.aiMode = false;
     state.pendingCommand = '';
     if (state.shouldResumeChat) {
