@@ -121,13 +121,11 @@ export const drawHeader = (term, icon, title, color = accent) => {
   const labelLen = title.length + 4;
   const tailLen = Math.max(0, width - labelLen);
   const tail = '─'.repeat(tailLen);
-  term.writeln('');
   term.writeln(`   ${color}${icon}${r}  ${color}${bold}${title.toUpperCase()}${r}  ${dim}${tail}${r}`);
-  term.writeln('');
 };
 
 export const drawFooter = (term) => {
-  term.writeln('');
+  // Removed blank line
 };
 
 export const writeUserBubble = (term, text) => {
@@ -148,7 +146,6 @@ export const writeUserBubble = (term, text) => {
 };
 
 export const writeChatBanner = (term) => {
-  term.writeln('');
   term.writeln(`   ${accent}◈${r}  ${bold}${white}Chat mode${r}  ${dim}·  context preserved  ·  ${muted}Ctrl+C${dim} or empty ↵ to exit${r}`);
 };
 
@@ -156,8 +153,7 @@ const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '
 
 export const startSpinner = (term) => {
   state.spinnerIndex = 0;
-  term.writeln('');
-  term.write(`   ${accent}${spinnerFrames[0]}${r}  ${dim}${italic}thinking...${r}`);
+  term.write(`\r\n   ${accent}${spinnerFrames[0]}${r}  ${dim}${italic}thinking...${r}`);
   state.spinnerInterval = setInterval(() => {
     state.spinnerIndex = (state.spinnerIndex + 1) % spinnerFrames.length;
     term.write(`\x1b[2K\r   ${accent}${spinnerFrames[state.spinnerIndex]}${r}  ${dim}${italic}thinking...${r}`);
@@ -197,3 +193,4 @@ export const writeCommandBlock = (term, content) => {
     term.writeln(`   ${muted}╰${r}`);
   }
 };
+

@@ -35,14 +35,12 @@ export const processAiQuery = async (term, prompt) => {
       if (level === 'danger') {
         drawHeader(term, '⚠', 'DANGEROUS COMMAND', red);
         term.writeln(`   ${red}${warning}${r}`);
-        term.writeln('');
         writeCommandBlock(term, result.content);
         drawFooter(term);
         term.write(`   ${red}Type 'yes' to execute${r}: `);
       } else if (level === 'warning') {
         drawHeader(term, '⚠', 'SENSITIVE COMMAND', yellow);
         term.writeln(`   ${yellow}${warning}${r}`);
-        term.writeln('');
         writeCommandBlock(term, result.content);
         drawFooter(term);
         term.write(`   ${accent}run it? (y/n)${r} `);
