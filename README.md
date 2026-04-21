@@ -34,6 +34,58 @@ Choose the brain that powers your terminal. Krit supports:
 - **Cloud**: Groq (Llama 3), OpenAI (GPT-4o/o1)
 - **Local**: Ollama (for 100% private, offline inference)
 
+## 🏗️ Architecture
+
+Krit is built on a split-process architecture designed for performance, security, and low-latency interaction.
+
+```mermaid
+graph TD
+    subgraph "Main Process (Node.js)"
+        PM[PTY Manager] --> |node-pty| OS[(Native Shell)]
+        AC[AI Controller] --> |Providers| LLM(Groq / OpenAI / Ollama)
+        SL[Safety Layer] --> |Regex/Logic| Classifier[Destructive Command Detector]
+        SC[Storage] --> |Config| SD[(Local Storage)]
+    end
+
+    subgraph "Renderer Process (Chrome)"
+        XT[Xterm.js] --> |WebGL| UI[Terminal UI]
+        CH[Chat Module] --> |Markdown| RD[Response Rendering]
+        ST[State Manager] --> |Context| Sync[IPC Bridge]
+    end
+
+    Sync <--> |IPC| PM
+    Sync <--> |IPC| AC
+    Sync <--> |IPC| SC
+```
+
+### Core Components
+
+-   **Terminal Engine**: Powered by `xterm.js` with WebGL acceleration. It interfaces with `node-pty` in the main process to handle real-world terminal behaviors and signal passing.
+-   **AI Orchestrator**: A modular controller that supports multiple LLM providers. It automatically injects terminal context (CWD, hardware info, scrollback history) into every request.
+-   **Security Classification**: A real-time engine that parses AI-generated commands. If a command matches destructive patterns (e.g., `rm -rf`, `dd`, `mkfs`), it is intercepted and requires explicit user consent before being piped to the shell.
+-   **Platform Bridge**: Custom IPC implementation ensures that heavy AI processing or terminal I/O doesn't block the UI thread, maintaining a solid 60fps even during high output bursts.
+
+## 📂 Project Structure
+
+```text
+src/
+├── ai/                # AI Engine logic
+│   ├── providers/     # Groq, OpenAI, Ollama adapters
+│   ├── controller.js  # Main AI orchestration logic
+│   ├── safety.js      # Command classification & security
+│   └── context.js     # Scrollback & session management
+├── main/              # Electron Main Process
+│   ├── index.js       # App entry point & IPC handlers
+│   ├── pty.js         # Pseudo-terminal lifecycle management
+│   └── wizard.js      # First-run setup & configuration
+├── renderer/          # Electron Renderer Process (Frontend)
+│   ├── index.html     # Main UI structure
+│   ├── renderer.js    # Entry point for the frontend
+│   ├── ui.js          # DOM manipulation & screen rendering
+│   └── ai.js          # Frontend AI interaction logic
+└── config/            # System & user configuration
+```
+
 ## 📦 Installation
 
 ### Linux (AppImage)
@@ -82,3 +134,4 @@ Krit is built with a security-first philosophy. Standard terminal input is proce
 
 ---
 *Built for the next generation of command-line power users.*
+
