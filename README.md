@@ -41,21 +41,33 @@ Krit is built on a split-process architecture designed for performance, security
 ```mermaid
 graph TD
     subgraph "Main Process (Node.js)"
-        PM[PTY Manager] --> |node-pty| OS[(Native Shell)]
-        AC[AI Controller] --> |Providers| LLM(Groq / OpenAI / Ollama)
-        SL[Safety Layer] --> |Regex/Logic| Classifier[Destructive Command Detector]
-        SC[Storage] --> |Config| SD[(Local Storage)]
+        IPC[IPC Main Handlers]
+        PM[PTY Manager] --> |node-pty| OS[(Native OS Shell)]
+        AC[AI Controller] --> |REST / Local| LLM(Groq / OpenAI / Ollama)
+        SL[Safety Engine] --> |Pattern Matching| Threat[Destructive Command Detector]
+        SC[Settings Logic] --> |node:fs| FS[(~/.krit/config.json)]
+        MD[Markdown Engine] --> |marked-terminal| ANSI[ANSI Formatter]
+        
+        IPC <--> |Terminal I/O| PM
+        IPC <--> |AI Queries / Context| AC
+        IPC <--> |Intercepts Commands| SL
+        IPC <--> |Reads / Writes| SC
+        IPC <--> |Converts to ANSI| MD
     end
 
-    subgraph "Renderer Process (Chrome)"
-        XT[Xterm.js] --> |WebGL| UI[Terminal UI]
-        CH[Chat Module] --> |Markdown| RD[Response Rendering]
-        ST[State Manager] --> |Context| Sync[IPC Bridge]
+    subgraph "Renderer Process (Web UI)"
+        Bridge[contextBridge / Preload]
+        XT[Xterm.js Engine] --> |WebGL| Canvas[Terminal UI]
+        UIAI[UI & Chat Handlers]
+        State[State Manager]
+        
+        UIAI <--> Bridge
+        State <--> Bridge
+        UIAI <--> XT
+        UIAI <--> State
     end
 
-    Sync <--> |IPC| PM
-    Sync <--> |IPC| AC
-    Sync <--> |IPC| SC
+    Bridge <--> |Inter-Process Communication| IPC
 ```
 
 ### Core Components
