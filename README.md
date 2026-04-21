@@ -1,13 +1,7 @@
 <div align="center">
-<pre>
-     __        _ __ 
-    / /__  ___(_) /_
-   / //_/ / __/ / __/
-  / ,<   / / / / /_
- /_/|_| /_/ /_/\__/ 
-</pre>
-  <h3><b>Krit</b></h3>
-  <p><b>The AI-Native Terminal Emulator for Modern Workflows.</b></p>
+  <img src="build/icon.png" width="128" height="128" alt="Krit Logo" />
+  <h1>Krit</h1>
+  <p><b>The AI-Native Terminal Emulator for Modern Workflows</b></p>
 
   <p>
     <img src="https://img.shields.io/badge/Electron-303030?style=for-the-badge&logo=electron&logoColor=47BCFF" />
@@ -19,24 +13,34 @@
 
 ---
 
-**Krit** is a high-performance terminal emulator that bridges the gap between the shell and Large Language Models. Built for engineers who live in the CLI, Krit understands your environment, remembers your session history, and helps you execute complex commands safely—all without ever leaving your terminal window.
+**Krit** is a high-performance terminal emulator designed to bridge the gap between the shell and Large Language Models. Built for engineers who live in the CLI, Krit understands your environment, remembers your session context, and helps you execute complex commands safely—all within a unified, hardware-accelerated interface.
 
-## ✨ Core Features
+## 🚀 Key Features
 
-- **Context-Aware Intelligence**: Krit maintains a background buffer of your terminal scrollback. The AI knows exactly which commands you've run, which ones failed, and why.
-- **Natural Language Shell**: Prefix any query with `-` (e.g., `- find all large log files`) to receive suggested shell commands tailored to your OS and current directory.
-- **Advanced Safety Layer**: Real-time classification of AI-generated commands. Destructive operations (like `rm -rf` or `dd`) trigger high-alert warnings and require explicit confirmation.
-- **Fastfetch-Inspired Aesthetic**: A modern, borderless UI with a built-in system specification banner, optimized for speed with WebGL rendering.
-- **Multi-Provider Support**: Seamlessly connect to **Groq**, **OpenAI**, or local **Ollama** instances via a built-in setup wizard.
+### 🧠 Context-Aware Intelligence
+Krit maintains a background buffer of your terminal scrollback. The integrated AI understands your current directory, hardware specifications, and previous command outputs to provide highly relevant assistance.
 
-## 🚀 Getting Started
+### ⌨️ Natural Language Shell
+Convert intent into action instantly. Prefix any query with `-` (e.g., `- find all docker volumes over 1GB`) to receive optimized shell commands tailored to your OS and environment.
 
-### Installation (Linux)
+### 🛡️ Advanced Safety Layer
+Execute AI-generated commands with confidence. Krit features a real-time classification engine that detects destructive operations (like `rm -rf`, `dd`, or sensitive config edits) and requires explicit user confirmation before execution.
 
-The easiest way to use Krit is via the standalone **AppImage**. No Node.js or Electron installation is required on your system.
+### 🎨 Modern Aesthetic
+Inspired by high-performance CLI tools like `fastfetch`, Krit features a borderless, minimalist UI with a WebGL-powered rendering engine for zero-latency input and smooth text display.
 
-1. Download the latest `Krit.AppImage` from the [Releases](https://github.com/10KRITESH/krit/releases) page.
-2. Grant execution permissions:
+### 🔌 Multi-Provider Support
+Choose the brain that powers your terminal. Krit supports:
+- **Cloud**: Groq (Llama 3), OpenAI (GPT-4o/o1)
+- **Local**: Ollama (for 100% private, offline inference)
+
+## 📦 Installation
+
+### Linux (AppImage)
+The recommended way to run Krit is via the standalone AppImage. 
+
+1. Download `Krit.AppImage` from the [latest release](https://github.com/10KRITESH/krit/releases).
+2. Make it executable:
    ```bash
    chmod +x Krit-0.1.3.AppImage
    ```
@@ -45,9 +49,9 @@ The easiest way to use Krit is via the standalone **AppImage**. No Node.js or El
    ./Krit-0.1.3.AppImage
    ```
 
-### Development Setup
+## 🛠️ Development
 
-If you wish to build Krit from source:
+To build Krit from source or contribute:
 
 1. **Clone & Install**:
    ```bash
@@ -64,16 +68,9 @@ If you wish to build Krit from source:
    npm run dist
    ```
 
-## 🛠️ Built With
-
-- **Framework**: [Electron](https://www.electronjs.org/)
-- **Terminal Engine**: [Xterm.js](https://xtermjs.org/) with WebGL & Canvas renderers
-- **System Bridge**: [Node-pty](https://github.com/microsoft/node-pty) for native OS shell linking
-- **Inference**: High-speed Groq Llama-3 API and local Ollama support
-
 ## 🛡️ Security & Privacy
 
-Krit is designed with a "Security-First" philosophy. AI queries are only triggered by explicit user prefixes. All standard terminal inputs stay strictly local. The built-in command classifier acts as a final firewall between AI suggestions and your file system.
+Krit is built with a security-first philosophy. Standard terminal input is processed locally and never leaves your machine. AI queries are only triggered by explicit user prefixes.
 
 ---
-*Built to make the command line feel fluid.*
+*Built for the next generation of command-line power users.*
