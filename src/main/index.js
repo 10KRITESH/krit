@@ -42,12 +42,12 @@ const createWindow = () => {
             nodeIntegration: false,
             sandbox: false
         },
-        show: true, 
+        show: true,
         roundedCorners: true
     })
 
     mainWindow.loadFile(path.join(__dirname, '../../src/renderer/index.html'))
-    
+
     // Add context menu for copy/paste
     mainWindow.webContents.on('context-menu', (e, params) => {
         const menu = new Menu()
@@ -62,10 +62,18 @@ const createWindow = () => {
         const startPty = () => {
             ptyManager.start(
                 (data) => {
-                    mainWindow.webContents.send('pty-data', data)
+                    try {
+                        if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+                            mainWindow.webContents.send('pty-data', data)
+                        }
+                    } catch (e) {}
                 },
                 (exitCode) => {
-                    mainWindow.webContents.send('pty-data', `\r\n\x1b[31m[Session terminated with code ${exitCode.exitCode}]\x1b[0m\r\n\x1b[33mPress Enter to restart shell...\x1b[0m\r\n`)
+                    try {
+                        if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+                            mainWindow.webContents.send('pty-data', `\r\n\x1b[31m[Session terminated with code ${exitCode.exitCode}]\x1b[0m\r\n\x1b[33mPress Enter to restart shell...\x1b[0m\r\n`)
+                        }
+                    } catch (e) {}
                 },
                 80, 24
             )

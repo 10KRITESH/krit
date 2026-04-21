@@ -39,15 +39,23 @@ Choose the brain that powers your terminal. Krit supports:
 ### Linux (AppImage)
 The recommended way to run Krit is via the standalone AppImage. 
 
-1. Download `Krit.AppImage` from the [latest release](https://github.com/10KRITESH/krit/releases).
+1. Download `krit-latest.AppImage` from the [latest release](https://github.com/10KRITESH/krit/releases).
 2. Make it executable:
    ```bash
-   chmod +x Krit-0.1.3.AppImage
+   chmod +x krit-latest.AppImage
    ```
 3. Launch:
    ```bash
-   ./Krit-0.1.3.AppImage
+   ./krit-latest.AppImage
    ```
+
+## 🛡️ New in Version 1.0.4
+
+- **Universal Directory Sync**: Now features OSC 7 shell integration to reliably track your working directory across all platforms.
+- **Smart Session Recovery**: If your shell crashes or terminates, Krit now offers an instant "Press Enter to Restart" recovery.
+- **Enhanced AI Input**: Fully interactive AI prompt buffer with support for arrow keys, middle-of-line editing, and persistent font scaling.
+- **Privacy Hardening**: Proactive environment scrubbing to ensure your API keys never leak into the shell's sub-processes.
+- **Shortcut Support**: Use `Ctrl+K` to clear scrollback and `Ctrl +/-` to scale the UI (saved across restarts).
 
 ## 🛠️ Development
 

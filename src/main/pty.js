@@ -47,7 +47,7 @@ alias krit-config='ELECTRON_RUN_AS_NODE=1 "${execPath}" "${wizardPath}"'
 # Shell integration for CWD tracking
 if [ "$TERM" != "linux" ]; then
     function __krit_osc7 {
-        printf "\033]7;file://%s%s\a" "$HOSTNAME" "$PWD"
+        printf "\\033]7;file://%s%s\\a" "$HOSTNAME" "$PWD"
     }
     PROMPT_COMMAND="__krit_osc7;$PROMPT_COMMAND"
 fi

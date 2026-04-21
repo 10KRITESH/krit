@@ -113,11 +113,7 @@ export const writeAiLine = (term, text) => {
 };
 
 export const drawHeader = (term, icon, title, color = accent) => {
-  const width = Math.min(term.cols - 10, 72);
-  const labelLen = title.length + 4;
-  const tailLen = Math.max(0, width - labelLen);
-  const tail = '─'.repeat(tailLen);
-  term.writeln(`   ${color}${icon}${r}  ${color}${bold}${title.toUpperCase()}${r}  ${dim}${tail}${r}`);
+  term.writeln(`   ${color}${icon}${r}  ${color}${bold}${title.toUpperCase()}${r}`);
 };
 
 export const drawFooter = (term) => {
@@ -179,13 +175,11 @@ export const writeAiError = (term, text) => {
 export const writeCommandBlock = (term, content) => {
   const cmdLines = content.split('\n');
   if (cmdLines.length === 1) {
-    term.writeln(`   ${white}${content}${r}`);
+    term.writeln(`   ${muted}│${r}  ${cyan}${content}${r}`);
   } else {
-    term.writeln(`   ${muted}╭${r}`);
     for (const cl of cmdLines) {
       term.writeln(`   ${muted}│${r}  ${cyan}${cl}${r}`);
     }
-    term.writeln(`   ${muted}╰${r}`);
   }
 };
 

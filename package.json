@@ -1,6 +1,6 @@
 {
     "name": "krit",
-    "version": "0.1.3",
+    "version": "1.0.4",
     "description": "AI-powered terminal",
     "author": {
         "name": "Kritesh Goud",
@@ -31,7 +31,8 @@
                 "deb"
             ],
             "category": "TerminalEmulator",
-            "executableName": "krit"
+            "executableName": "krit",
+            "artifactName": "krit-latest.${ext}"
         },
         "win": {
             "target": "nsis"

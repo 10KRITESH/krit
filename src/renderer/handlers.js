@@ -30,10 +30,16 @@ export const startOutputCapture = (cmd) => {
   state.outputTimer = setTimeout(() => flushOutputCapture(window.term), 800);
 };
 
+const MAX_IPC_BUFFER = 100 * 1024; // 100 KB — well within Electron IPC limits
+
 export const flushOutputCapture = async (term) => {
   let isWaitingForAiCommand = false;
   if (state.capturing && state.captureCommand && state.outputBuffer) {
-    window.krit.sendCommandOutput(state.captureCommand, state.outputBuffer);
+    // Truncate from the start to keep only the tail (most relevant for error analysis)
+    const truncated = state.outputBuffer.length > MAX_IPC_BUFFER
+      ? state.outputBuffer.slice(-MAX_IPC_BUFFER)
+      : state.outputBuffer;
+    window.krit.sendCommandOutput(state.captureCommand, truncated);
 
     const errorPatterns = [
       /ERR!/i, /Error:/i, /command not found/i, /failed to/i, 
@@ -48,7 +54,7 @@ export const flushOutputCapture = async (term) => {
     if (isError) {
       term.write(`\r\n   ${accent}◈${r}  ${dim}analyzing error...${r}`);
       try {
-        const analysis = await window.krit.analyzeError(state.captureCommand, state.outputBuffer);
+        const analysis = await window.krit.analyzeError(state.captureCommand, truncated);
 
         term.write('\x1b[2K\r');
 
