@@ -2,6 +2,7 @@ const ollama = require('./ollama')
 const groq = require('./groq')
 const openai = require('./openai')
 const custom = require('./custom')
+const gemini = require('./gemini')
 const settings = require('../../config/settings')
 
 const getProvider = () => {
@@ -16,6 +17,8 @@ const getProvider = () => {
             return openai
         case 'custom':
             return custom
+        case 'gemini':
+            return gemini
         case 'ollama':
             return ollama
         default:
