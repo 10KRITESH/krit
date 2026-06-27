@@ -157,9 +157,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (e.key.toLowerCase() === 'v') {
           navigator.clipboard.readText().then(text => {
+            if (!text || typeof text !== 'string') return;
+
+            // Sanitize pasted text: strip dangerous control characters
+            const MAX_PASTE_LENGTH = 10000;
+            let sanitized = text
+              .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '') // Strip control chars (keep \t, \n, \r)
+              .slice(0, MAX_PASTE_LENGTH);
+
             if (state.isChatting || isAiPrefix(state.lineBuffer)) {
               // Normalize multi-line paste to a single line for AI prompt
-              const normalized = text.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
+              const normalized = sanitized.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
               term.write(normalized);
               
               const before = state.lineBuffer.slice(0, state.cursorPos);
@@ -173,8 +181,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (let i = 0; i < after.length; i++) term.write('\b');
               }
             } else {
-              window.krit.ptyInput(text);
+              window.krit.ptyInput(sanitized);
             }
+          }).catch(err => {
+            console.error('[krit] Clipboard read error:', err);
           });
           e.preventDefault();
           return;
@@ -226,6 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     term.onData((data) => {
+     try {
       if (data.charCodeAt(0) === 27 && data.length > 1) {
         if (!state.aiMode && !state.aiProcessing) {
           const isAi = state.isChatting || state.lineBuffer.trimStart().startsWith('-');
@@ -408,6 +419,12 @@ document.addEventListener('DOMContentLoaded', () => {
         state.cursorPos += data.length;
         window.krit.ptyInput(data);
       }
+     } catch (err) {
+      console.error('[krit] Error in terminal data handler:', err);
+      // Reset state to prevent the terminal from getting stuck
+      state.aiProcessing = false;
+      state.aiMode = false;
+     }
     });
 
   } catch (err) {

@@ -1,20 +1,29 @@
 const { OpenAI } = require('openai')
+const crypto = require('crypto')
 const { buildSystemPrompt } = require('../prompts')
 const settings = require('../../config/settings')
 
 let openaiClient = null
-let currentApiKey = null
+let _keyHash = null
+
+/** Simple hash to detect config changes without storing raw secrets in memory */
+const hash = (str) => crypto.createHash('sha256').update(str).digest('hex')
 
 const getClient = () => {
     const apiKey = settings.get('apiKey') || ''
 
-    // Recreate client if API key changed
-    if (!openaiClient || currentApiKey !== apiKey) {
+    if (!apiKey) {
+        throw new Error('OpenAI API key is not configured. Run `krit-config` to set one up.')
+    }
+
+    const newKeyHash = hash(apiKey)
+
+    // Recreate client only if API key changed
+    if (!openaiClient || _keyHash !== newKeyHash) {
         openaiClient = new OpenAI({
             apiKey: apiKey
-            // OpenAI library automatically defaults to https://api.openai.com/v1
         })
-        currentApiKey = apiKey
+        _keyHash = newKeyHash
     }
     return openaiClient
 }

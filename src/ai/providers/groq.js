@@ -1,21 +1,34 @@
 const { OpenAI } = require('openai')
+const crypto = require('crypto')
 const { buildSystemPrompt } = require('../prompts')
 const settings = require('../../config/settings')
 
 let groqClient = null
-let currentApiKey = null
+let _keyHash = null
+let _baseUrlHash = null
+
+/** Simple hash to detect config changes without storing raw secrets in memory */
+const hash = (str) => crypto.createHash('sha256').update(str).digest('hex')
 
 const getClient = () => {
     const apiKey = settings.get('apiKey') || ''
     const baseUrl = settings.get('baseUrl') || 'https://api.groq.com/openai/v1'
 
-    // Recreate client if API key or base URL changed
-    if (!groqClient || currentApiKey !== apiKey) {
+    if (!apiKey) {
+        throw new Error('Groq API key is not configured. Run `krit-config` to set one up.')
+    }
+
+    const newKeyHash = hash(apiKey)
+    const newUrlHash = hash(baseUrl)
+
+    // Recreate client only if API key or base URL changed
+    if (!groqClient || _keyHash !== newKeyHash || _baseUrlHash !== newUrlHash) {
         groqClient = new OpenAI({
             baseURL: baseUrl,
             apiKey: apiKey
         })
-        currentApiKey = apiKey
+        _keyHash = newKeyHash
+        _baseUrlHash = newUrlHash
     }
     return groqClient
 }

@@ -10,9 +10,19 @@ let MODEL = () => settings.get('model') || 'qwen2.5:7b'
  */
 const ollamaRequest = (payload) => {
     return new Promise((resolve, reject) => {
-        const url = new URL('/api/chat', OLLAMA_HOST())
+        let url
+        try {
+            url = new URL('/api/chat', OLLAMA_HOST())
+        } catch (e) {
+            return reject(new Error(`Invalid Ollama host URL "${OLLAMA_HOST()}": ${e.message}`))
+        }
 
-        const postData = JSON.stringify(payload)
+        let postData
+        try {
+            postData = JSON.stringify(payload)
+        } catch (e) {
+            return reject(new Error(`Failed to serialize Ollama request payload: ${e.message}`))
+        }
 
         const options = {
             hostname: url.hostname,
@@ -28,7 +38,13 @@ const ollamaRequest = (payload) => {
         const req = http.request(options, (res) => {
             let body = ''
             res.on('data', (chunk) => { body += chunk })
+            res.on('error', (err) => {
+                reject(new Error(`Ollama response stream error: ${err.message}`))
+            })
             res.on('end', () => {
+                if (res.statusCode < 200 || res.statusCode >= 300) {
+                    return reject(new Error(`Ollama returned HTTP ${res.statusCode}: ${body.slice(0, 200)}`))
+                }
                 try {
                     const parsed = JSON.parse(body)
                     resolve(parsed)
@@ -49,6 +65,9 @@ const ollamaRequest = (payload) => {
 
         req.write(postData)
         req.end()
+    }).catch((err) => {
+        // Ensure no unhandled rejections — re-throw with clear context
+        throw err instanceof Error ? err : new Error(`Ollama request failed: ${String(err)}`)
     })
 }
 

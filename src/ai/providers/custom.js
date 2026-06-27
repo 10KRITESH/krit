@@ -68,7 +68,17 @@ const ask = async (userMessage, cwd, history = [], fileList = []) => {
 
         return { type: 'chat', content: raw || 'No response from Custom Provider.' }
     } catch (err) {
-        throw new Error(`Custom API Error: ${err.message}`)
+        // Provide specific error messages based on error type
+        if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
+            throw new Error(`Custom Provider: Cannot connect to server. Check your baseUrl configuration.`)
+        }
+        if (err.status === 401 || err.status === 403) {
+            throw new Error(`Custom Provider: Authentication failed. Check your API key.`)
+        }
+        if (err.code === 'ETIMEDOUT' || err.code === 'ESOCKETTIMEDOUT') {
+            throw new Error(`Custom Provider: Request timed out. The server may be overloaded.`)
+        }
+        throw new Error(`Custom API Error: ${err.message || 'Unknown error occurred'}`)
     }
 }
 

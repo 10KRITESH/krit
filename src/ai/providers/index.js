@@ -7,13 +7,21 @@ const gemini = require('./gemini')
 const settings = require('../../config/settings')
 
 // Only reload settings from disk when config file actually changes (mtime)
+// Debounced to avoid redundant stat calls on rapid successive invocations
 let _lastMtime = 0
+let _lastCheckTime = 0
+const RELOAD_DEBOUNCE_MS = 1000
+
 const reloadIfChanged = () => {
+    const now = Date.now()
+    if (now - _lastCheckTime < RELOAD_DEBOUNCE_MS) return
+    _lastCheckTime = now
+
     try {
-        const mtime = fs.statSync(settings.CONFIG_FILE).mtimeMs
-        if (mtime !== _lastMtime) {
+        const stat = fs.statSync(settings.CONFIG_FILE)
+        if (stat && stat.mtimeMs !== _lastMtime) {
             settings.load()
-            _lastMtime = mtime
+            _lastMtime = stat.mtimeMs
         }
     } catch {
         // Config file may not exist yet — settings.get() will lazy-init
