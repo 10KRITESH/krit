@@ -67,6 +67,12 @@ async function promptList(title, options) {
     render()
 
     return new Promise((resolve) => {
+        const cleanup = () => {
+            if (process.stdin.isTTY) process.stdin.setRawMode(false)
+            process.stdin.removeListener('keypress', onKey)
+            showCursor()
+        }
+
         const onKey = (str, key) => {
             // Ignore if key is undefined
             if (!key) return;
@@ -78,18 +84,18 @@ async function promptList(title, options) {
                 index = (index + 1) % options.length
                 render()
             } else if (key.name === 'return' || key.name === 'enter') {
-                if (process.stdin.isTTY) process.stdin.setRawMode(false)
-                process.stdin.removeListener('keypress', onKey)
+                cleanup()
                 process.stdin.pause() // Pause so readline can take over cleanly if needed
-                showCursor()
+                process.removeListener('exit', cleanup)
                 resolve(options[index])
             } else if (key.ctrl && key.name === 'c') {
-                if (process.stdin.isTTY) process.stdin.setRawMode(false)
-                showCursor()
+                cleanup()
                 process.exit(0)
             }
         }
         process.stdin.on('keypress', onKey)
+        // Ensure listener is removed if the process exits for any reason
+        process.once('exit', cleanup)
     })
 }
 

@@ -110,15 +110,21 @@ ipcMain.on('pty-resize', (_, { cols, rows }) => ptyManager.resize(cols, rows))
 
 // update cwd whenever renderer tells us
 ipcMain.on('cwd-update', (_, cwd) => {
-    currentCwd = cwd
+    if (typeof cwd === 'string' && cwd.trim()) currentCwd = cwd
 })
 
 // handle AI query from renderer
 ipcMain.handle('ai-query', async (_, message) => {
+    if (typeof message !== 'string' || !message.trim()) {
+        return { type: 'error', content: 'Invalid query: message must be a non-empty string.' }
+    }
+    // Cap payload size to prevent oversized IPC messages
+    const safeMessage = message.slice(0, 10000)
+
     const latestCwd = ptyManager.getCwd()
     if (latestCwd) currentCwd = latestCwd
 
-    const result = await ai.query(message, currentCwd)
+    const result = await ai.query(safeMessage, currentCwd)
 
     // if AI returned a command, classify it before sending back
     if (result.type === 'command') {
