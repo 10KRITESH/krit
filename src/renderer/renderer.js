@@ -411,7 +411,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
   } catch (err) {
-    document.getElementById('terminal').innerHTML =
-      `<pre style="color:#E24B4A;padding:20px;font-size:13px;">Terminal init error:\n${err.message}\n${err.stack}</pre>`;
+    console.error('[krit] Terminal init error:', err);
+    const termEl = document.getElementById('terminal');
+    if (termEl) {
+      termEl.innerHTML =
+        `<pre style="color:#E24B4A;padding:20px;font-size:13px;">Terminal init error:\n${err.message}\n${err.stack}</pre>`;
+    }
   }
 });

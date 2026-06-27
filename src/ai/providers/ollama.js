@@ -67,14 +67,19 @@ const ask = async (userMessage, cwd, history = [], fileList = []) => {
         ...history,
     ]
 
-    const response = await ollamaRequest({
-        model: MODEL(),
-        messages,
-        stream: false,
-        options: {
-            temperature: 0.3,
-        },
-    })
+    let response
+    try {
+        response = await ollamaRequest({
+            model: MODEL(),
+            messages,
+            stream: false,
+            options: {
+                temperature: 0.3,
+            },
+        })
+    } catch (err) {
+        throw new Error(`Ollama Error: ${err.message}`)
+    }
 
     const raw = response?.message?.content || ''
 
