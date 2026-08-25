@@ -138,7 +138,7 @@ To build Krit from source or contribute:
 3. **Build Distribution Packages**:
    ```bash
    npm run dist
-   ```
+   ``` 
 
 ## 🛡️ Security & Privacy
 
